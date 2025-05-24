@@ -2,7 +2,7 @@ from pathlib import Path
 from orjson import loads
 
 def read_json(filename):
-    file_path = Path(__file__).parent.parent / filename
+    file_path = Path(__file__).parent / filename
     with open(file_path, "rb") as file:  # 'rb' для orjson
         return loads(file.read())
 

@@ -1,9 +1,8 @@
-from pathlib import Path
 from orjson import loads
 
 def read_json(filename):
-    file_path = Path(__file__) / filename
-    with open(file_path, "r") as file:
+    
+    with open(filename, "r") as file:
         return loads(file.text())
 
 def get_student_data():

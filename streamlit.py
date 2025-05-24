@@ -32,6 +32,7 @@ if g:
             p_max, et_min = 0, 0
             for ti, r_list in ti_dict.items():
                 if ld["tests"][ti] == tn:
+                    tmp = {}
                     for r in r_list:
                         ft, et, p, m = r.split("=")
                         et, p = int(et), int(p)
@@ -44,8 +45,7 @@ if g:
                                 "Результат": f"{p} из 30",
                                 "Ошибки": m,
                             }
-            else:
-                json(tmp)
+                    json(tmp)
     else:
         new = {}
         for fn, ti_dict in log[g].items():

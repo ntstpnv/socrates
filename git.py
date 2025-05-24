@@ -1,9 +1,8 @@
 from orjson import loads
 
 def read_json(filename):
-    
-    with open(filename, "r") as file:
-        return loads(file.text())
+    with open(filename, "r", encoding='utf-8') as file:
+        return loads(file.read())
 
 def get_student_data():
     return read_json("students.json")

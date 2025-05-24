@@ -2,7 +2,7 @@ from itertools import chain
 
 from streamlit import sidebar, json, set_page_config
 
-from cache.git import get_log, login_data as ld
+from git import get_log, login_data as ld
 
 log = get_log()
 

@@ -1,24 +1,18 @@
-from base64 import b64decode
 from pathlib import Path
 from orjson import loads
 
-def read_encoded_json(filename):
-    """Чтение файла из корня репозитория (папка socrates/)"""
-    file_path = Path(__file__).parent.parent / filename  # Поднимаемся на 2 уровня вверх
-    with open(file_path, "r", encoding="utf-8") as file:
-        encoded_data = file.read().strip()
-    return loads(b64decode(encoded_data).decode("utf-8"))
-
-def get_log():
-    return read_encoded_json("log.json")
+def read_json(filename):
+    file_path = Path(__file__).parent.parent / filename
+    with open(file_path, "rb") as file:  # 'rb' для orjson
+        return loads(file.read())
 
 def get_student_data():
-    return read_encoded_json("students.json")
+    return read_json("students.json")
 
 def get_test_data():
-    return read_encoded_json("tests.json")
+    return read_json("tests.json")
 
 login_data = {
     "students": get_student_data(),
-    "tests": get_test_data(),
+    "tests": get_test_data()
 }

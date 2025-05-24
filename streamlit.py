@@ -28,8 +28,8 @@ ge = sidebar.number_input("Граница отображения", 0, 30, step=1
 
 if g:
     if best:
-        p_max, et_min = 0, 0
         for fn, ti_dict in log[g].items():
+            p_max, et_min = 0, 0
             for ti, r_list in ti_dict.items():
                 if ld["tests"][ti] == tn:
                     for r in r_list:
@@ -37,15 +37,14 @@ if g:
                         et, p = int(et), int(p)
                         if p >= ge and (p_max < p or p_max == p and et_min > et):
                             p_max, et_min = p, et
-                            json(
-                                {
-                                    "Студент": fn,
-                                    "Время завершения": ft,
-                                    "Длительность": f"{et // 60}:{et % 60:02}",
-                                    "Результат": f"{p} из 30",
-                                    "Ошибки": m,
-                                }
-                            )
+                            tmp = {
+                                "Студент": fn,
+                                "Время завершения": ft,
+                                "Длительность": f"{et // 60}:{et % 60:02}",
+                                "Результат": f"{p} из 30",
+                                "Ошибки": m,
+                            }
+                    json(tmp)        
     else:
         new = {}
         for fn, ti_dict in log[g].items():

@@ -44,6 +44,7 @@ if g:
                                 "Результат": f"{p} из 30",
                                 "Ошибки": m,
                             }
+            if tmp:
                 json(tmp)
     else:
         new = {}

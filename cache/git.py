@@ -5,7 +5,7 @@ from orjson import loads
 
 
 def read_encoded_json(filename):
-    file_path = Path(__file__).parent / filename
+    file_path = Path(__file__).parent.parent / filename
     with open(file_path, "r", encoding="utf-8") as file:
         encoded_data = file.read().strip()
     return loads(b64decode(encoded_data).decode("utf-8"))

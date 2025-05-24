@@ -28,7 +28,9 @@ ge = sidebar.number_input("Граница отображения", 0, 30, step=1
 
 if g:
     if best:
+        tmp = {}
         for fn, ti_dict in log[g].items():
+            p_max, et_min = 0, 0
             for ti, r_list in ti_dict.items():
                 if ld["tests"][ti] == tn:
                     for r in r_list:

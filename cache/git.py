@@ -3,8 +3,8 @@ from orjson import loads
 
 def read_json(filename):
     file_path = Path(__file__).parent / filename
-    with open(file_path, "rb") as file:  # 'rb' для orjson
-        return loads(file.read())
+    with open(file_path, "r") as file:  # 'rb' для orjson
+        return loads(file.text())
 
 def get_student_data():
     return read_json("students.json")

@@ -1,16 +1,21 @@
 from orjson import loads
+from requests import Session
 
-def read_json(filename):
-    with open(filename, "r", encoding='utf-8') as file:
-        return loads(file.read())
 
-def get_student_data():
-    return read_json("students.json")
+def get_log():
+    with Session() as session:
+        response = session.get("https://raw.githubusercontent.com/ntstpnv/socrates/refs/heads/main/log.json")
+        content = loads(response.text)
 
-def get_test_data():
-    return read_json("tests.json")
+    return content
 
-login_data = {
-    "students": get_student_data(),
-    "tests": get_test_data()
-}
+
+login_data = {}
+
+
+with Session() as session:
+    students_response = session.get("https://raw.githubusercontent.com/ntstpnv/socrates/refs/heads/main/students.json")
+    login_data["students"] = loads(students_response.text)
+
+    tests_response = session.get("https://raw.githubusercontent.com/ntstpnv/socrates/refs/heads/main/tests.json")
+    login_data["tests"] = loads(tests_response.text)

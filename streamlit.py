@@ -44,8 +44,8 @@ if g:
                                 "Результат": f"{p} из 30",
                                 "Ошибки": m,
                             }
-        if tmp:
-            json(tmp)                
+                    if tmp:
+                        json(tmp)                
     else:
         new = {}
         for fn, ti_dict in log[g].items():

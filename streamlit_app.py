@@ -1,13 +1,13 @@
 from itertools import chain
 
-from streamlit import sidebar, json, set_page_config
+from streamlit import json, set_page_config, sidebar
 
 from cache import get_log, login_data
 
-log = get_log()
 
 set_page_config(layout="wide")
 
+log = get_log()
 group = sidebar.selectbox("Учебная группа", log, index=None, placeholder="Надо выбрать")
 
 if group:

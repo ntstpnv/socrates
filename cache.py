@@ -10,12 +10,9 @@ def get_log() -> dict:
         return session.get(url_raw("log.json")).json()
 
 
-def get_login_data() -> dict:
+def get_test_catalog() -> dict[str, str]:
     with Session() as session:
-        return {
-            "students": session.get(url_raw("students.json")).json(),
-            "tests": session.get(url_raw("tests.json")).json(),
-        }
+        return session.get(url_raw("test_catalog.json")).json()
 
 
-login_data = get_login_data()
+test_catalog = get_test_catalog()

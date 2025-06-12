@@ -2,7 +2,7 @@ from itertools import chain
 
 from streamlit import json, set_page_config, sidebar
 
-from cache import get_log, test_catalog
+from cache import get_log, catalog
 
 
 set_page_config(layout="wide")
@@ -14,7 +14,7 @@ if group:
     tn = sidebar.selectbox(
         "Название теста",
         {
-            test_catalog[ti]
+            catalog[ti]
             for ti in chain.from_iterable(
                 ti_dict.keys() for ti_dict in log[group].values()
             )
@@ -31,7 +31,7 @@ if group:
         for fn, ti_dict in log[group].items():
             ft_, et_min, p_max, m_ = None, 0, 0, None
             for ti, r_list in ti_dict.items():
-                if test_catalog[ti] == tn:
+                if catalog[ti] == tn:
                     for r in r_list:
                         ft, et, p, m = r.split("=")
                         et, p = int(et), int(p)
@@ -50,7 +50,7 @@ if group:
     else:
         for fn, ti_dict in log[group].items():
             for ti, r_list in ti_dict.items():
-                if test_catalog[ti] == tn:
+                if catalog[ti] == tn:
                     for r in r_list:
                         ft, et, p, m = r.split("=")
                         et = int(et)

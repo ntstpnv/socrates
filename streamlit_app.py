@@ -1,8 +1,20 @@
 from itertools import chain
 
+from requests import Session
 from streamlit import json, set_page_config, sidebar
 
-from cache import get_log, catalog
+
+def url_raw(path: str) -> str:
+    return f"https://raw.githubusercontent.com/ntstpnv/socrates/refs/heads/main/{path}"
+
+
+with Session() as session:
+    catalog = session.get(url_raw("catalog.json")).json()
+
+
+def get_log() -> dict:
+    with Session() as session:
+        return session.get(url_raw("log.json")).json()
 
 
 set_page_config(layout="wide")

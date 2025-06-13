@@ -1,20 +1,19 @@
+from datetime import datetime
 from itertools import chain
 
 from requests import Session
 from streamlit import json, set_page_config, sidebar
 
 
-def url_raw(path: str) -> str:
-    return f"https://raw.githubusercontent.com/ntstpnv/socrates/refs/heads/main/{path}"
+url_raw = "https://raw.githubusercontent.com/ntstpnv/socrates/refs/heads/main/"
 
-
-with Session() as session:
-    catalog = session.get(url_raw("catalog.json")).json()
+with Session() as s1:
+    catalog = s1.get(f"{url_raw}catalog.json").json()
 
 
 def get_log() -> dict:
-    with Session() as session:
-        return session.get(url_raw("log.json")).json()
+    with Session() as s2:
+        return s2.get(f"{url_raw}log.json").json()
 
 
 set_page_config(layout="wide")
@@ -46,26 +45,26 @@ if group:
                 if catalog[ti] == tn:
                     for r in r_list:
                         ft, et, p, m = r.split("=")
-                        et, p = int(et), int(p)
+                        ft, et, p = int(ft), int(et), int(p)
                         if p_max < p or p_max == p and et_min > et:
                             ft_, et_min, p_max, m_ = ft, et, p, m
             if ft_:
                 if more:
-                    new.setdefault(fn, {})
-                    new[fn] = {
-                        f"{ft_} = {et_min // 60}:{et_min % 60:02} = {p_max} из 30": m_
-                    }
+                    ft_ = datetime.fromtimestamp(ft_).strftime("%H:%M %d.%m.%y")
+                    et_min = f"{et_min // 60}:{et_min % 60:02}"
+                    new[fn] = {f"{ft_} = {et_min} = {p_max} из 30": m_}
                 else:
-                    new[" ".join([i for i in fn.split() if not i.isdigit()])] = (
-                        f"{p_max} из 30"
-                    )
+                    fn = " ".join([i for i in fn.split() if not i.isdigit()])
+                    new[fn] = f"{p_max} из 30"
     else:
         for fn, ti_dict in log[group].items():
             for ti, r_list in ti_dict.items():
                 if catalog[ti] == tn:
                     for r in r_list:
                         ft, et, p, m = r.split("=")
-                        et = int(et)
+                        ft, et = int(ft), int(et)
                         new.setdefault(fn, {})
-                        new[fn][f"{ft} = {et // 60}:{et % 60:02} = {p} из 30"] = m
+                        ft = datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y")
+                        et = f"{et // 60}:{et % 60:02}"
+                        new[fn][f"{ft} = {et} = {p} из 30"] = m
     json(new)

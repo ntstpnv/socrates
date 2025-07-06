@@ -39,7 +39,7 @@ if last:
     v_list = v_list[::-1]
     new = dict(zip(k_list, v_list))
 
-group = sidebar.selectbox("Учебная группа", log, index=None, placeholder="Надо выбрать", disabled=not last)
+group = sidebar.selectbox("Учебная группа", log, index=None, placeholder="Надо выбрать", disabled=last)
 if group:
     tn = sidebar.selectbox(
         "Название теста",

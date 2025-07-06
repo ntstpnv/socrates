@@ -1,6 +1,7 @@
 from bisect import bisect_left
 from datetime import datetime
 from itertools import chain
+from string import digits
 
 from requests import Session
 from streamlit import json, set_page_config, sidebar
@@ -23,23 +24,25 @@ log, new = get_log(), {}
 
 last = sidebar.toggle("Новые результаты", value=True)
 if last:
-    k_list, v_list = [0, 0, 0, 0, 0], ["", "", "", "", ""]
+    ft_list, _list = [0, 0, 0, 0, 0], ["", "", "", "", ""]
     for g, g_dict in log.items():
         for fn, ti_dict in g_dict.items():
             for ti, r_list in ti_dict.items():
                 for r in r_list:
-                    ft, et, p, m = r.split("=")
+                    ft, _, p, _ = r.split("=")
                     ft = int(ft)
-                    i = bisect_left(k_list, ft)
+                    i = bisect_left(ft_list, ft)
                     if i:
-                        k_list[i - 1] = ft
-                        fn = " ".join([i for i in fn.split() if not i.isdigit()])
-                        v_list[i - 1] = f"{g} {fn} {catalog[ti]} {p}"
-    k_list = [datetime.fromtimestamp(i).strftime("%H:%M %d.%m.%y") for i in k_list[::-1]]
-    v_list = v_list[::-1]
-    new = dict(zip(k_list, v_list))
+                        ft_list[i - 1] = ft
+                        _list[5 - i] = (
+                            f"{g} = {fn.strip(digits)}= {catalog[ti]} = {p} из 30"
+                        )
+    ft_list = [datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y") for ft in ft_list]
+    new = dict(zip(ft_list[::-1], _list))
 
-group = sidebar.selectbox("Учебная группа", log, index=None, placeholder="Надо выбрать", disabled=last)
+group = sidebar.selectbox(
+    "Учебная группа", None if last else log, index=None, placeholder="Надо выбрать"
+)
 if group:
     tn = sidebar.selectbox(
         "Название теста",
@@ -72,8 +75,7 @@ if group:
                     et_min = f"{et_min // 60}:{et_min % 60:02}"
                     new[fn] = {f"{ft_} = {et_min} = {p_max} из 30": m_}
                 else:
-                    fn = " ".join([i for i in fn.split() if not i.isdigit()])
-                    new[fn] = f"{p_max} из 30"
+                    new[fn.strip(digits).strip()] = f"{p_max} из 30"
     else:
         for fn, ti_dict in log[group].items():
             for ti, r_list in ti_dict.items():

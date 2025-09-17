@@ -32,7 +32,7 @@ if last:
                     ft, _, p, _ = r.split("=")
                     ft = int(ft)
                     if ft > ft_list[0][0]:
-                        r = f"{g} = {fn.strip(digits)}= {catalog[ti]} = {p} из 30"
+                        r = f"{g} = {fn} = {catalog[ti]} = {p} из 30"
                         insort_left(ft_list, (ft, r))
                         del ft_list[0]
     new = {

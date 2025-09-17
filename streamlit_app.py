@@ -36,7 +36,8 @@ if last:
                         insort_left(ft_list, (ft, r))
                         del ft_list[0]
     new = {
-        datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y"): r for ft, r in ft_list
+        datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y"): r
+        for ft, r in reversed(ft_list)
     }
 
 group = sidebar.selectbox(

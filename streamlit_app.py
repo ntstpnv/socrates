@@ -1,4 +1,4 @@
-from bisect import bisect_left
+from bisect import insort_left
 from datetime import datetime
 from itertools import chain
 from string import digits
@@ -24,21 +24,20 @@ log, new = get_log(), {}
 
 last = sidebar.toggle("Новые результаты", value=True)
 if last:
-    ft_list, _list = [0, 0, 0, 0, 0], ["", "", "", "", ""]
+    ft_list = [(0, ""), (0, ""), (0, ""), (0, ""), (0, "")]
     for g, g_dict in log.items():
         for fn, ti_dict in g_dict.items():
             for ti, r_list in ti_dict.items():
                 for r in r_list:
                     ft, _, p, _ = r.split("=")
                     ft = int(ft)
-                    i = bisect_left(ft_list, ft)
-                    if i:
-                        ft_list[i - 1] = ft
-                        _list[5 - i] = (
-                            f"{g} = {fn.strip(digits)}= {catalog[ti]} = {p} из 30"
-                        )
-    ft_list = [datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y") for ft in ft_list]
-    new = dict(zip(ft_list[::-1], _list))
+                    if ft > ft_list[0][0]:
+                        r = f"{g} = {fn.strip(digits)}= {catalog[ti]} = {p} из 30"
+                        insort_left(ft_list, (ft, r))
+                        del ft_list[0]
+    new = {
+        datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y"): r for ft, r in ft_list
+    }
 
 group = sidebar.selectbox(
     "Учебная группа", None if last else log, index=None, placeholder="Надо выбрать"

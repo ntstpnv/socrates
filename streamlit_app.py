@@ -35,10 +35,12 @@ if last:
                         r = f"{g} = {n} = {catalog[ti]} = {p} из 30"
                         insort_left(ft_list, (ft, r))
                         del ft_list[0]
-    new = {
-        datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y"): r
-        for ft, r in reversed(ft_list)
-    }
+    json(
+        {
+            datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y"): r
+            for ft, r in reversed(ft_list)
+        }
+    )
 
 group = sidebar.selectbox(
     "Учебная группа", None if last else log, index=None, placeholder="Надо выбрать"
@@ -69,7 +71,7 @@ if group:
                         if p_max < p or p_max == p and et_min > et:
                             ft_, et_min, p_max, m_ = ft, et, p, m
             if ft_:
-                new[n.strip(digits).strip()] = f"{p_max} из 30"
+                new[n] = f"{p_max} из 30"
     else:
         for n, ti_dict in log[group].items():
             for ti, r_list in ti_dict.items():

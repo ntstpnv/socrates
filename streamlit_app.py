@@ -57,7 +57,6 @@ if group:
     )
 
     best = sidebar.toggle("Только лучшие попытки", value=True)
-    more = sidebar.toggle("Подробная информация", disabled=not best)
 
     if best:
         for n, ti_dict in log[group].items():
@@ -70,12 +69,7 @@ if group:
                         if p_max < p or p_max == p and et_min > et:
                             ft_, et_min, p_max, m_ = ft, et, p, m
             if ft_:
-                if more:
-                    ft_ = datetime.fromtimestamp(ft_).strftime("%H:%M %d.%m.%y")
-                    et_min = f"{et_min // 60}:{et_min % 60:02}"
-                    new[n] = {f"{ft_} = {et_min} = {p_max} из 30": m_}
-                else:
-                    new[n.strip(digits).strip()] = f"{p_max} из 30"
+                new[n.strip(digits).strip()] = f"{p_max} из 30"
     else:
         for n, ti_dict in log[group].items():
             for ti, r_list in ti_dict.items():

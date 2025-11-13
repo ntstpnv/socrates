@@ -1,7 +1,6 @@
 from bisect import insort_left
 from datetime import datetime
 from itertools import chain
-from string import digits
 
 from requests import Session
 from streamlit import json, set_page_config, sidebar
@@ -20,7 +19,7 @@ def get_log() -> dict:
 
 set_page_config(layout="wide")
 
-log, new = get_log(), {}
+log = get_log()
 
 last = sidebar.toggle("Новые результаты", value=True)
 if last:
@@ -58,8 +57,7 @@ if group:
         placeholder="Надо выбрать",
     )
 
-    best = sidebar.toggle("Только лучшие попытки", value=True)
-
+    best, results = sidebar.toggle("Только лучшие попытки", value=True), {}
     if best:
         for n, ti_dict in log[group].items():
             ft_, et_min, p_max, m_ = None, 0, 0, None
@@ -71,7 +69,7 @@ if group:
                         if p_max < p or p_max == p and et_min > et:
                             ft_, et_min, p_max, m_ = ft, et, p, m
             if ft_:
-                new[n] = f"{p_max} из 30"
+                results[n] = f"{p_max} из 30"
     else:
         for n, ti_dict in log[group].items():
             for ti, r_list in ti_dict.items():
@@ -79,8 +77,8 @@ if group:
                     for r in r_list:
                         ft, et, p, m = r.split("=")
                         ft, et = int(ft), int(et)
-                        new.setdefault(n, {})
+                        results.setdefault(n, {})
                         ft = datetime.fromtimestamp(ft).strftime("%H:%M %d.%m.%y")
                         et = f"{et // 60}:{et % 60:02}"
-                        new[n][f"{ft} = {et} = {p} из 30"] = m
-json(new)
+                        results[n][f"{ft} = {et} = {p} из 30"] = m
+    json(results)

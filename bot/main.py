@@ -176,7 +176,7 @@ if __name__ == "__main__":
             (STATE4 := 4): [CallbackQueryHandler(preparation)],
             (STATE5 := 5): [CallbackQueryHandler(next_question)],
         },
-        [CommandHandler("stop", stop)]
+        [CommandHandler("stop", stop)],
     )
 
     application.add_handler(conversation)

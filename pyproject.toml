@@ -3,7 +3,9 @@ name = "socrates-template"
 version = "0.0.0"
 description = "Add your description here"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "python-telegram-bot[rate-limiter]>=22.6",
+]
 
 [tool.commitizen]
 name = "cz_conventional_commits"

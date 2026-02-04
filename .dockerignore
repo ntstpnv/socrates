@@ -1,0 +1,17 @@
+# Контроль версий
+.git
+
+# Настройки IDE
+.idea/
+
+# Виртуальное окружение
+.venv/
+
+# Кэш для Python
+__pycache__/
+
+# Кэш для Ruff
+.ruff_cache/
+
+# Конфигурация для Docker
+Dockerfile

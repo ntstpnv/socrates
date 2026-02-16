@@ -5,7 +5,7 @@ from random import choice, sample
 from time import time
 
 from aiohttp import ClientSession
-from orjson import dumps, loads, OPT_SORT_KEYS
+from orjson import OPT_SORT_KEYS, dumps, loads
 from telegram import Update
 from telegram.ext import (
     AIORateLimiter,
@@ -16,8 +16,8 @@ from telegram.ext import (
     ConversationHandler,
 )
 
+from bot.cache import PROGRESS_BARS, REPLY_MARKUP, TEXT, VARIANTS, students
 from bot.config import BOT_TOKEN, HEADERS, URL_API, URL_RAW
-from bot.cache import PROGRESS_BARS, REPLY_MARKUP, students, TEXT, VARIANTS
 from bot.utils import reply_markup_builder
 
 

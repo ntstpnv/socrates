@@ -1,184 +1,117 @@
-from asyncio import sleep
-from base64 import b64decode, b64encode
-from collections import deque
-from random import choice, sample
-from time import time
+from asyncio import run
 
-from aiohttp import ClientSession
-from orjson import OPT_SORT_KEYS, dumps, loads
-from telegram import Update
-from telegram.ext import (
-    AIORateLimiter,
-    Application,
-    CallbackContext,
-    CallbackQueryHandler,
-    CommandHandler,
-    ConversationHandler,
-)
+from maxapi import Bot, Dispatcher
+from maxapi.context import MemoryContext, State, StatesGroup
+from maxapi.types import Command, CommandStart, MessageCallback, MessageCreated
 
-from bot.cache import PROGRESS_BARS, REPLY_MARKUP, TEXT, VARIANTS, students
-from bot.config import BOT_TOKEN, HEADERS, URL_API, URL_RAW
-from bot.utils import reply_markup_builder
+from bot import settings
+from bot.cache import ATTACHMENTS, TEXT, catalog
+from bot.utils.attachments import students_attachments
+from bot.utils.preparation import test_preparation
+from bot.utils.result import test_result
 
 
-async def update_log(g: str, n: str, t: str, r: str) -> None:
-    url = f"{URL_API}log.json"
-
-    async with ClientSession() as session:
-        async with session.get(url, headers=HEADERS) as response:
-            response_dict = loads(await response.read())
-            log_str = b64decode(response_dict["content"]).decode()
-            log_dict = loads(log_str) if log_str else {}
-            log_dict.setdefault(g, {}).setdefault(n, {}).setdefault(t, []).append(r)
-
-        async with session.put(
-            url,
-            json={
-                "message": "+=",
-                "content": b64encode(dumps(log_dict, option=OPT_SORT_KEYS)).decode(),
-                "sha": response_dict["sha"],
-            },
-            headers=HEADERS,
-        ) as _:
-            pass
+bot = Bot(settings.BOT_TOKEN)
+dp = Dispatcher()
 
 
-async def select_group(u: Update, c: CallbackContext) -> int:
-    c.user_data["chat_id"] = u.message.chat_id
-
-    await sleep(0.4)
-    c.user_data["message_id"] = (
-        await u.message.reply_text(TEXT.STATE1, reply_markup=REPLY_MARKUP.STATE1)
-    ).message_id
-
-    return STATE2
+class States(StatesGroup):
+    STATE2 = State()
+    STATE3 = State()
+    STATE4 = State()
+    STATE5 = State()
 
 
-async def select_name(u: Update, c: CallbackContext) -> int:
-    await u.callback_query.answer()
-    c.user_data["group"] = u.callback_query.data
+@dp.message_created(None, CommandStart())
+async def select_group(event: MessageCreated, context: MemoryContext):
+    message = await event.message.answer(TEXT.STATE1, ATTACHMENTS.STATE1)
+    await context.update_data(message_id=message.message.body.mid)
 
-    reply_markup = reply_markup_builder(students[c.user_data["group"]])
-
-    await sleep(0.4)
-    await u.callback_query.edit_message_text(TEXT.STATE2, reply_markup=reply_markup)
-
-    return STATE3
+    await context.set_state(States.STATE2)
 
 
-async def select_test(u: Update, c: CallbackContext) -> int:
-    await u.callback_query.answer()
-    c.user_data["name"] = f"{u.callback_query.data} {u.callback_query.from_user.id}"
+@dp.message_callback(States.STATE2)
+async def select_name(event: MessageCallback, context: MemoryContext):
+    group = event.callback.payload
+    await event.answer(notification=group)
+    await context.update_data(group=group)
 
-    await sleep(0.4)
-    await u.callback_query.edit_message_text(
-        TEXT.STATE3, reply_markup=REPLY_MARKUP.STATE3
-    )
+    data = await context.get_data()
+    attachments = students_attachments(group)
+    await event.bot.edit_message(data["message_id"], TEXT.STATE2, attachments)
 
-    return STATE4
-
-
-async def preparation(u: Update, c: CallbackContext) -> int:
-    await u.callback_query.answer()
-    c.user_data["test_id"] = u.callback_query.data
-
-    url = f"{URL_RAW}tests/{c.user_data['test_id']}.json"
-    async with ClientSession() as session:
-        async with session.get(url) as response:
-            test = loads(await response.text())
-
-    numbers = sample(list(test), 30)
-    a_deque, q_deque = deque(), deque()
-    for number, progress_bar in zip(numbers, PROGRESS_BARS):
-        a1, a2, a3, a4 = choice(VARIANTS)
-        a_deque.append(
-            {
-                "1": number + a1,
-                "2": number + a2,
-                "3": number + a3,
-                "4": number + a4,
-            }
-        )
-        question = test[number]
-        q_deque.append(
-            f"{progress_bar}{question['0']}\n\n"
-            f"1 {question[a1]}\n"
-            f"2 {question[a2]}\n"
-            f"3 {question[a3]}\n"
-            f"4 {question[a4]}"
-        )
-
-    c.user_data["A"] = a_deque
-    c.user_data["points"], c.user_data["M"] = 0, []
-
-    text = q_deque.popleft()
-    c.user_data["Q"] = q_deque
-
-    c.user_data["start_time"] = int(time())
-
-    await u.callback_query.edit_message_text(text, reply_markup=REPLY_MARKUP.QUESTION)
-
-    return STATE5
+    await context.set_state(States.STATE3)
 
 
-async def next_question(u: Update, c: CallbackContext) -> int:
-    await u.callback_query.answer()
-    answer = c.user_data["A"].popleft()[u.callback_query.data]
+@dp.message_callback(States.STATE3)
+async def select_test(event: MessageCallback, context: MemoryContext):
+    student = event.callback.payload
+    await event.answer(notification=student)
+    await context.update_data(name=f"{student} {event.from_user.user_id}")
+
+    data = await context.get_data()
+    await event.bot.edit_message(data["message_id"], TEXT.STATE3, ATTACHMENTS.STATE3)
+
+    await context.set_state(States.STATE4)
+
+
+@dp.message_callback(States.STATE4)
+async def first_question(event: MessageCallback, context: MemoryContext):
+    test_id = event.callback.payload
+    await event.answer(notification=catalog[test_id])
+
+    data = await context.get_data()
+    text = await test_preparation(test_id, context)
+    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.QUESTION)
+
+    await context.set_state(States.STATE5)
+
+
+@dp.message_callback(States.STATE5)
+async def next_question(event: MessageCallback, context: MemoryContext):
+    option = event.callback.payload
+    await event.answer(notification=option)
+
+    data = await context.get_data()
+    answer = data["options"].popleft()[option]
 
     if answer.endswith("1"):
-        c.user_data["points"] += 1
+        data["points"] += 1
+        await context.update_data(points=data["points"])
     else:
-        c.user_data["M"].append(answer)
+        data["mistakes"].append(answer)
+        await context.update_data(mistakes=data["mistakes"])
 
-    if not c.user_data["Q"]:
-        finish_time = int(time())
-        execution_time = finish_time - c.user_data["start_time"]
-        mistakes = " ".join(sorted(c.user_data["M"]))
+    if not data["tasks"]:
+        await test_result(data)
 
-        await update_log(
-            c.user_data["group"],
-            c.user_data["name"],
-            c.user_data["test_id"],
-            f"{finish_time}={execution_time}={c.user_data['points']}={mistakes}",
+        await event.bot.edit_message(
+            data["message_id"],
+            f"Результат: {data['points']} из 30",
         )
 
-        await u.callback_query.edit_message_text(
-            f"Результат: {c.user_data['points']} из 30"
-        )
+        await context.clear()
+        return
 
-        return ConversationHandler.END
-
-    text = c.user_data["Q"].popleft()
-
-    await sleep(0.4)
-    await u.callback_query.edit_message_text(text, reply_markup=REPLY_MARKUP.QUESTION)
-
-    return STATE5
+    text = data["tasks"].popleft()
+    await context.update_data(tasks=data["tasks"])
+    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.QUESTION)
 
 
-async def stop(u: Update, c: CallbackContext) -> int:
-    await c.bot.delete_message(c.user_data["chat_id"], c.user_data["message_id"])
-    await u.message.reply_text(TEXT.STOP)
+@dp.message_created(Command("stop"))
+async def stop(event: MessageCreated, context: MemoryContext):
+    data = await context.get_data()
 
-    return ConversationHandler.END
+    if message_id := data.get("message_id"):
+        await event.bot.delete_message(message_id)
+        await event.message.answer(TEXT.STOP)
+
+    await context.clear()
+
+
+async def main():
+    await dp.start_polling(bot, skip_updates=True)
 
 
 if __name__ == "__main__":
-    application = (
-        Application.builder().rate_limiter(AIORateLimiter()).token(BOT_TOKEN).build()
-    )
-
-    conversation = ConversationHandler(
-        [CommandHandler("start", select_group)],
-        {
-            (STATE2 := 2): [CallbackQueryHandler(select_name)],
-            (STATE3 := 3): [CallbackQueryHandler(select_test)],
-            (STATE4 := 4): [CallbackQueryHandler(preparation)],
-            (STATE5 := 5): [CallbackQueryHandler(next_question)],
-        },
-        [CommandHandler("stop", stop)],
-    )
-
-    application.add_handler(conversation)
-
-    application.run_polling(drop_pending_updates=True)
+    run(main())

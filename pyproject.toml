@@ -4,10 +4,9 @@ version = "0.2.0"
 description = "Add your description here"
 requires-python = ">=3.14"
 dependencies = [
-    "aiohttp>=3.13.3",
+    "maxapi>=0.9.15",
     "orjson>=3.11.7",
     "python-dotenv>=1.2.1",
-    "python-telegram-bot[rate-limiter]>=22.6",
     "requests>=2.32.5",
 ]
 

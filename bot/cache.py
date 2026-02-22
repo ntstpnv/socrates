@@ -2,13 +2,14 @@ from collections import namedtuple
 
 from requests import Session
 
-from bot.config import URL_RAW
-from bot.utils import reply_markup_builder, text_builder
+from bot.settings import URL_RAW
+from bot.utils.attachments import attachments_builder
+from bot.utils.text import text_builder
 
 
 with Session() as session:
-    students = session.get(f"{URL_RAW}students.json").json()
-    catalog = session.get(f"{URL_RAW}catalog.json").json()
+    students: dict[str, list[str]] = session.get(f"{URL_RAW}students.json").json()
+    catalog: dict[str, str] = session.get(f"{URL_RAW}catalog.json").json()
 
 
 TEXT = namedtuple(
@@ -22,17 +23,17 @@ TEXT = namedtuple(
 )
 
 
-REPLY_MARKUP = namedtuple(
-    "ReplyMarkup",
+ATTACHMENTS = namedtuple(
+    "Attachments",
     ["STATE1", "STATE3", "QUESTION"],
 )(
-    reply_markup_builder(students),
-    reply_markup_builder(catalog, False),
-    reply_markup_builder(("1", "2", "3", "4")),
+    attachments_builder(students),
+    attachments_builder(catalog, False),
+    attachments_builder(("1", "2", "3", "4")),
 )
 
 
-VARIANTS = (
+PERMUTATIONS = (
     ("1", "2", "3", "4"),
     ("1", "2", "4", "3"),
     ("1", "3", "2", "4"),

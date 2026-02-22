@@ -3,8 +3,6 @@ from typing import Iterable
 from maxapi.types import Attachment, CallbackButton
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 
-from bot.cache import students
-
 
 def attachments_builder(
     data: Iterable[str],
@@ -23,7 +21,3 @@ def attachments_builder(
         attachment.row(*row)
 
     return [attachment.as_markup()]
-
-
-def students_attachments(group: str) -> list[Attachment]:
-    return attachments_builder(students[group])

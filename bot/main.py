@@ -5,8 +5,8 @@ from maxapi.context import MemoryContext, State, StatesGroup
 from maxapi.types import Command, CommandStart, MessageCallback, MessageCreated
 
 from bot import settings
-from bot.cache import ATTACHMENTS, TEXT, catalog
-from bot.utils.attachments import students_attachments
+from bot.cache import ATTACHMENTS, TEXT, catalog, students
+from bot.utils.attachments import attachments_builder
 from bot.utils.preparation import test_preparation
 from bot.utils.result import test_result
 
@@ -37,7 +37,7 @@ async def select_name(event: MessageCallback, context: MemoryContext):
     await context.update_data(group=group)
 
     data = await context.get_data()
-    attachments = students_attachments(group)
+    attachments = attachments_builder(students[group])
     await event.bot.edit_message(data["message_id"], TEXT.STATE2, attachments)
 
     await context.set_state(States.STATE3)

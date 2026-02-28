@@ -3,13 +3,13 @@ from collections import namedtuple
 from requests import Session
 
 from bot.settings import URL_RAW
-from bot.utils.attachments import attachments_builder
-from bot.utils.text import text_builder
+from bot.types import Types
+from bot.utils.builders import attachments_builder, text_builder
 
 
 with Session() as session:
-    students: dict[str, list[str]] = session.get(f"{URL_RAW}students.json").json()
-    catalog: dict[str, str] = session.get(f"{URL_RAW}catalog.json").json()
+    groups: Types.Groups = session.get(f"{URL_RAW}groups.json").json()
+    catalog: Types.Catalog = session.get(f"{URL_RAW}catalog.json").json()
 
 
 TEXT = namedtuple(
@@ -27,7 +27,7 @@ ATTACHMENTS = namedtuple(
     "Attachments",
     ["STATE1", "STATE3", "QUESTION"],
 )(
-    attachments_builder(students),
+    attachments_builder(groups),
     attachments_builder(catalog, False),
     attachments_builder(("1", "2", "3", "4")),
 )

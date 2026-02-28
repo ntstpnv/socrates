@@ -5,8 +5,8 @@ from maxapi.context import MemoryContext, State, StatesGroup
 from maxapi.types import Command, CommandStart, MessageCallback, MessageCreated
 
 from bot import settings
-from bot.cache import ATTACHMENTS, TEXT, catalog, students
-from bot.utils.attachments import attachments_builder
+from bot.cache import ATTACHMENTS, TEXT, groups
+from bot.utils.builders import attachments_builder
 from bot.utils.preparation import test_preparation
 from bot.utils.result import test_result
 
@@ -24,6 +24,8 @@ class States(StatesGroup):
 
 @dp.message_created(None, CommandStart())
 async def select_group(event: MessageCreated, context: MemoryContext):
+    await context.update_data(id=event.from_user.user_id)
+
     message = await event.message.answer(TEXT.STATE1, ATTACHMENTS.STATE1)
     await context.update_data(message_id=message.message.body.mid)
 
@@ -33,11 +35,11 @@ async def select_group(event: MessageCreated, context: MemoryContext):
 @dp.message_callback(States.STATE2)
 async def select_name(event: MessageCallback, context: MemoryContext):
     group = event.callback.payload
-    await event.answer(notification=group)
+    await event.answer()
     await context.update_data(group=group)
 
     data = await context.get_data()
-    attachments = attachments_builder(students[group])
+    attachments = attachments_builder(groups[group])
     await event.bot.edit_message(data["message_id"], TEXT.STATE2, attachments)
 
     await context.set_state(States.STATE3)
@@ -46,8 +48,8 @@ async def select_name(event: MessageCallback, context: MemoryContext):
 @dp.message_callback(States.STATE3)
 async def select_test(event: MessageCallback, context: MemoryContext):
     student = event.callback.payload
-    await event.answer(notification=student)
-    await context.update_data(name=f"{student} {event.from_user.user_id}")
+    await event.answer()
+    await context.update_data(student=student)
 
     data = await context.get_data()
     await event.bot.edit_message(data["message_id"], TEXT.STATE3, ATTACHMENTS.STATE3)
@@ -58,7 +60,7 @@ async def select_test(event: MessageCallback, context: MemoryContext):
 @dp.message_callback(States.STATE4)
 async def first_question(event: MessageCallback, context: MemoryContext):
     test_id = event.callback.payload
-    await event.answer(notification=catalog[test_id])
+    await event.answer()
 
     data = await context.get_data()
     text = await test_preparation(test_id, context)
@@ -70,7 +72,7 @@ async def first_question(event: MessageCallback, context: MemoryContext):
 @dp.message_callback(States.STATE5)
 async def next_question(event: MessageCallback, context: MemoryContext):
     option = event.callback.payload
-    await event.answer(notification=option)
+    await event.answer()
 
     data = await context.get_data()
     answer = data["options"].popleft()[option]
@@ -87,6 +89,9 @@ async def next_question(event: MessageCallback, context: MemoryContext):
 
         await event.bot.edit_message(
             data["message_id"],
+            f"Группа: {data['group']}\n"
+            f"Студент: {data['student']}\n"
+            f"Тест: {data['test_name']}\n"
             f"Результат: {data['points']} из 30",
         )
 
@@ -110,6 +115,7 @@ async def stop(event: MessageCreated, context: MemoryContext):
 
 
 async def main():
+    await bot.delete_webhook()
     await dp.start_polling(bot, skip_updates=True)
 
 

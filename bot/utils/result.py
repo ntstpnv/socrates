@@ -9,8 +9,8 @@ from bot.settings import HEADERS, URL_API
 
 
 async def test_result(data: dict[str, Any]):
-    timestamp = int(time())
-    duration = timestamp - data["timestamp"]
+    finish_time = int(time())
+    duration = finish_time - data["start_time"]
     mistakes = " ".join(sorted(data["mistakes"]))
 
     url = f"{URL_API}log.json"
@@ -21,9 +21,9 @@ async def test_result(data: dict[str, Any]):
             log_dict = loads(log_str) if log_str else {}
             (
                 log_dict.setdefault(data["group"], {})
-                .setdefault(data["name"], {})
+                .setdefault(f"{data['student']} {data['id']}", {})
                 .setdefault(data["test_id"], [])
-                .append(f"{timestamp}={duration}={data['points']}={mistakes}")
+                .append(f"{finish_time}={duration}={data['points']}={mistakes}")
             )
 
         async with session.put(

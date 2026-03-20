@@ -1,0 +1,25 @@
+[project]
+name = "socrates"
+version = "0.2.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "maxapi>=0.9.17",
+    "orjson>=3.11.7",
+    "python-dotenv>=1.2.2",
+    "requests>=2.32.5",
+]
+
+[tool.ruff]
+builtins = ["_"]
+fix = true
+line-length = 100
+src = ["bot"]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+lines-between-types = 1

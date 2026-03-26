@@ -1,45 +1,86 @@
 from collections import namedtuple
 
-from requests import Session
+from bot.builders import AttachmentBuilder
 
-from bot.builders.attachments import (
-    get_question_attachments,
-    get_state1_attachments,
-    get_state3_attachments,
-    get_state4_attachments,
+
+STATEMENTS = namedtuple(
+    "_Statement",
+    [
+        "ADMIN1",
+        "ADMIN2",
+        "GET_RESULTS",
+        "STUDENT1",
+        "STUDENT2",
+        "STUDENT3",
+        "STUDENT5",
+        "ADD_RESULT",
+    ],
+)(
+    """
+        SELECT DISTINCT g.id, g.name
+        FROM groups g
+        JOIN results r ON g.id = r.group_id
+        ORDER BY g.name
+    """,
+    """
+        SELECT DISTINCT t.id, t.name
+        FROM tests t
+        JOIN results r ON t.id = r.test_id
+        WHERE r.group_id = $1
+        ORDER BY t.name
+    """,
+    """
+        SELECT DISTINCT ON (s.name, r.user_id) s.name, r.user_id, r.full_name, r.points, r.mistakes 
+        FROM students s
+        LEFT JOIN results r ON s.id = r.student_id AND r.test_id = $2
+        WHERE s.group_id = $1
+        ORDER BY s.name, r.user_id, r.points DESC, r.finished_at DESC
+    """,
+    "SELECT * FROM groups g ORDER BY g.name",
+    "SELECT s.id, s.name FROM students s WHERE group_id = $1 ORDER BY s.name",
+    "SELECT * FROM tests t ORDER BY t.name",
+    """
+        SELECT t.id, t.question, t.option1, t.option2, t.option3, t.option4
+        FROM tasks t
+        WHERE test_id = $1
+        ORDER BY RANDOM()
+        LIMIT 30
+    """,
+    """
+        INSERT INTO results (
+            user_id,               
+            full_name,          
+            group_id,       
+            student_id,     
+            test_id,
+            started_at,
+            finished_at,        
+            points,
+            mistakes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)          
+    """,
 )
-from bot.builders.texts import get_state3_text
-from bot.preloads import get_groups, get_students, get_tests
-
-
-with Session() as session:
-    GROUPS = get_groups(session)
-    STUDENTS = get_students(session)
-    TESTS = get_tests(session)
-
 
 TEXTS = namedtuple(
-    "Texts",
-    ["STATE1", "STATE2", "STATE3", "STATE4", "STOP"],
+    "_Text",
+    ["ADMIN1", "ADMIN2", "STUDENT1", "STUDENT2", "STUDENT3", "STOP"],
 )(
+    "<code>Шаг 1:\n\nВыберите группу</code>",
+    "<code>Шаг 2:\n\nВыберите тест</code>",
     "<code>Шаг 1:\n\nВыберите вашу группу</code>",
     "<code>Шаг 2:\n\nВыберите себя из списка</code>",
-    get_state3_text("Шаг 3:\nВыберите необходимый тест\n", TESTS),
-    "Шаг 4:\nПодтвердите правильность данных\n\nГрупа: {}\nСтудент: {}\nТест: {}",
-    "<code>Выполнение теста прервано</code>",
+    "<code>Шаг 3:\n\nВыберите необходимый тест</code>",
+    "<code>Выполнение прервано</code>",
 )
-
 
 ATTACHMENTS = namedtuple(
-    "Attachments",
-    ["STATE1", "STATE3", "STATE4", "QUESTION"],
+    "_Attachment",
+    ["STUDENT4", "QUESTION"],
 )(
-    get_state1_attachments(GROUPS),
-    get_state3_attachments(TESTS),
-    get_state4_attachments(("Начать тест", "Прервать тест")),
-    get_question_attachments(("1", "2", "3", "4")),
+    AttachmentBuilder.from_iterable(("Начать тест", "Выбрать заново"), 1),
+    AttachmentBuilder.from_iterable(("1", "2", "3", "4"), 4),
 )
-
 
 PERMUTATIONS = (
     ("1", "2", "3", "4"),
@@ -67,7 +108,6 @@ PERMUTATIONS = (
     ("4", "3", "1", "2"),
     ("4", "3", "2", "1"),
 )
-
 
 PROGRESS_BARS = (
     "Вопрос 1 из 30:\n",

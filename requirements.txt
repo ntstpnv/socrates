@@ -1,4 +1,0 @@
-orjson
-python-dotenv
-requests
-streamlit

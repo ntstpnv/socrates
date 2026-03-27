@@ -83,7 +83,7 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 
     media = InputMediaBuffer(text.encode("utf-8"), "results.txt")
 
-    await event.bot.delete_message(data["message_id"])
+    await event.message.delete()
     await event.bot.send_message(event.chat.chat_id, attachments=[media])
 
     await context.clear()
@@ -161,8 +161,7 @@ async def first_question(event: MessageCallback, context: MemoryContext):
     data = await context.get_data()
 
     if event.callback.payload == "Выбрать заново":
-        await event.bot.delete_message(data["message_id"])
-        await event.message.answer(TEXTS.STOP)
+        await event.bot.edit_message(data["message_id"], TEXTS.STOP)
 
         await context.clear()
         return

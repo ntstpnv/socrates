@@ -27,8 +27,8 @@ class Result(Base):
 
     started_at: Mapped[datetime]
     finished_at: Mapped[datetime]
+    answers: Mapped[str] = mapped_column(Text)
     points: Mapped[int] = mapped_column(SmallInteger)
-    mistakes: Mapped[str] = mapped_column(Text)
 
     group: Mapped["Group"] = relationship(back_populates="results")
     student: Mapped["Student"] = relationship(back_populates="results")

@@ -8,12 +8,12 @@ STATEMENTS = namedtuple(
     [
         "ADMIN1",
         "ADMIN2",
-        "GET_RESULTS",
+        "ADMIN3",
         "STUDENT1",
         "STUDENT2",
         "STUDENT3",
         "STUDENT5",
-        "ADD_RESULT",
+        "STUDENT6",
     ],
 )(
     """
@@ -30,7 +30,7 @@ STATEMENTS = namedtuple(
         ORDER BY t.name
     """,
     """
-        SELECT DISTINCT ON (s.name, r.user_id) s.name, r.user_id, r.full_name, r.points, r.mistakes 
+        SELECT DISTINCT ON (s.name, r.user_id) s.name, r.user_id, r.full_name, r.answers, r.points  
         FROM students s
         LEFT JOIN results r ON s.id = r.student_id AND r.test_id = $2
         WHERE s.group_id = $1
@@ -54,9 +54,9 @@ STATEMENTS = namedtuple(
             student_id,     
             test_id,
             started_at,
-            finished_at,        
-            points,
-            mistakes
+            finished_at,
+            answers,
+            points
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)          
     """,

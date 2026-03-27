@@ -25,7 +25,7 @@ class Repository:
 
     @staticmethod
     async def get_results(group_id: int, test_id: int) -> list[Row]:
-        return await _get_rows(STATEMENTS.GET_RESULTS, group_id, test_id)
+        return await _get_rows(STATEMENTS.ADMIN3, group_id, test_id)
 
     @staticmethod
     async def select_group() -> list[Row]:
@@ -52,12 +52,12 @@ class Repository:
         test_id: int,
         started_at: datetime,
         finished_at: datetime,
+        answers: str,
         points: int,
-        mistakes: str,
     ) -> None:
         async with ASYNC_ENGINE.begin() as conn:
             await conn.exec_driver_sql(
-                STATEMENTS.ADD_RESULT,
+                STATEMENTS.STUDENT6,
                 (
                     user_id,
                     full_name,
@@ -66,7 +66,7 @@ class Repository:
                     test_id,
                     started_at,
                     finished_at,
+                    answers,
                     points,
-                    mistakes,
                 ),
             )

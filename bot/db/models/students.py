@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bot.db.models.base import Base
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 class Student(Base):
     __tablename__ = "students"
+    __table_args__ = (UniqueConstraint("name", "group_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

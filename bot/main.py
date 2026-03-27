@@ -22,7 +22,6 @@ dp = Dispatcher()
 class States(StatesGroup):
     ADMIN2 = State()
     ADMIN3 = State()
-    ADMIN4 = State()
     STUDENT2 = State()
     STUDENT3 = State()
     STUDENT4 = State()
@@ -70,21 +69,20 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 
     results = await Repository.get_results(data["group_id"], test_id)
 
-    text = [f"Группа: {data['group']}", f"Тест: {test}\n"]
+    texts = [f"Группа: {data['group']}", f"Тест: {test}\n"]
     for r in results:
         if r.user_id:
-            text.append(f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n")
-            if r.mistakes:
-                text.append(f"{r.mistakes}\n")
+            texts.append(
+                f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n\n{r.answers}\n"
+            )
         else:
-            text.append(f"{r.name}\n")
+            texts.append(f"{r.name}\n")
 
-    text = "\n".join(text)
-
-    media = InputMediaBuffer(text.encode("utf-8"), "results.txt")
+    text = "\n".join(texts)
+    attachments = [InputMediaBuffer(text.encode("utf-8"), "results.txt")]
 
     await event.message.delete()
-    await event.bot.send_message(event.chat.chat_id, attachments=[media])
+    await event.bot.send_message(event.chat.chat_id, attachments=attachments)
 
     await context.clear()
     return
@@ -198,8 +196,8 @@ async def first_question(event: MessageCallback, context: MemoryContext):
     await context.update_data(
         messages=messages,
         options=options,
+        answers=[],
         points=0,
-        mistakes=[],
         started_at=datetime.now(),
     )
 
@@ -215,13 +213,12 @@ async def next_question(event: MessageCallback, context: MemoryContext):
     data = await context.get_data()
 
     answer = data["options"].popleft()[option]
+    data["answers"].append(answer)
+    await context.update_data(answers=data["answers"])
 
     if answer.endswith("1"):
         data["points"] += 1
         await context.update_data(points=data["points"])
-    else:
-        data["mistakes"].append(answer)
-        await context.update_data(mistakes=data["mistakes"])
 
     if not data["messages"]:
         finished_at = datetime.now()
@@ -234,8 +231,8 @@ async def next_question(event: MessageCallback, context: MemoryContext):
             data["test_id"],
             data["started_at"],
             finished_at,
+            " ".join(sorted(data["answers"], key=lambda a: (len(a), a))),
             data["points"],
-            " ".join(sorted(data["mistakes"], key=lambda m: (len(m), m))),
         )
 
         await event.bot.edit_message(
@@ -261,8 +258,7 @@ async def stop(event: MessageCreated, context: MemoryContext):
     data = await context.get_data()
 
     if message_id := data.get("message_id"):
-        await event.bot.delete_message(message_id)
-        await event.message.answer(TEXTS.STOP)
+        await event.bot.edit_message(message_id, TEXTS.STOP)
 
     await context.clear()
     return

@@ -1,13 +1,13 @@
 [project]
 name = "socrates"
-version = "0.3.2"
+version = "0.3.3"
 description = "Add your description here"
 requires-python = ">=3.14"
 dependencies = [
     "asyncpg>=0.31.0",
-    "maxapi>=0.9.17",
+    "maxapi>=0.9.18",
     "python-dotenv>=1.2.2",
-    "sqlalchemy>=2.0.48",
+    "sqlalchemy>=2.0.49",
 ]
 
 [tool.ruff]

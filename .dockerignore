@@ -17,4 +17,7 @@ __pycache__/
 Dockerfile
 
 #
+services/
+
+#
 README.md

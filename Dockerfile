@@ -25,6 +25,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14-slim-bookworm
 
+ENV TZ=Asia/Yekaterinburg
+
 RUN groupadd --system --gid 999 nonroot \
  && useradd --system --gid 999 --uid 999 --create-home nonroot
 

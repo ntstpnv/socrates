@@ -35,7 +35,7 @@ async def select_group_(event: MessageCreated, context: MemoryContext):
         return
 
     groups = await RowBuilder.select_group_()
-    attachments = AttachmentBuilder.from_rows(groups)
+    attachments = AttachmentBuilder.from_rows(groups, 1)
 
     message = await event.message.answer(TEXTS.ADMIN1, attachments)
     await context.update_data(message_id=message.message.body.mid)
@@ -52,7 +52,7 @@ async def select_test_(event: MessageCreated, context: MemoryContext):
     data = await context.get_data()
 
     tests = await RowBuilder.select_test_(group_id)
-    attachments = AttachmentBuilder.from_rows(tests)
+    attachments = AttachmentBuilder.from_rows(tests, 1)
 
     await event.bot.edit_message(data["message_id"], TEXTS.ADMIN2, attachments)
 
@@ -72,8 +72,9 @@ async def get_results(event: MessageCreated, context: MemoryContext):
     for r in results:
         if r.user_id:
             mistakes = " ".join(a for a in r.answers.split() if not a.endswith("1"))
+            mistakes = mistakes + "\n" if mistakes else ""
             texts.append(
-                f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n{mistakes}\n"
+                f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n{mistakes}"
             )
         else:
             texts.append(f"{r.name}\n")
@@ -144,7 +145,7 @@ async def get_confirm(event: MessageCallback, context: MemoryContext):
     text = (
         f"<code>Шаг 4:\n"
         f"Подтвердите правильность выбора\n\n"
-        f"Група: {data['group']}\n"
+        f"Група: {data['group'].replace('-', '_')}\n"
         f"Студент: {data['student']}\n"
         f"Тест: {test}</code>"
     )

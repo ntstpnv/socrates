@@ -9,9 +9,8 @@ from maxapi.enums.parse_mode import ParseMode
 from maxapi.filters.command import Command, CommandStart
 from maxapi.types import InputMediaBuffer, MessageCallback, MessageCreated
 
-from bot.builders import AttachmentBuilder
+from bot.builders import AttachmentBuilder, RowBuilder
 from bot.caches import ATTACHMENTS, PERMUTATIONS, PROGRESS_BARS, TEXTS
-from bot.db.repository import Repository
 from bot.settings import ADMINS, TOKEN
 
 
@@ -35,7 +34,7 @@ async def select_group_(event: MessageCreated, context: MemoryContext):
         await context.clear()
         return
 
-    groups = await Repository.select_group_()
+    groups = await RowBuilder.select_group_()
     attachments = AttachmentBuilder.from_rows(groups)
 
     message = await event.message.answer(TEXTS.ADMIN1, attachments)
@@ -52,7 +51,7 @@ async def select_test_(event: MessageCreated, context: MemoryContext):
 
     data = await context.get_data()
 
-    tests = await Repository.select_test_(group_id)
+    tests = await RowBuilder.select_test_(group_id)
     attachments = AttachmentBuilder.from_rows(tests)
 
     await event.bot.edit_message(data["message_id"], TEXTS.ADMIN2, attachments)
@@ -67,13 +66,14 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 
     data = await context.get_data()
 
-    results = await Repository.get_results(data["group_id"], test_id)
+    results = await RowBuilder.get_results(data["group_id"], test_id)
 
     texts = [f"Группа: {data['group']}", f"Тест: {test}\n"]
     for r in results:
         if r.user_id:
+            mistakes = " ".join(a for a in r.answers.split() if not a.endswith("1"))
             texts.append(
-                f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n\n{r.answers}\n"
+                f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n{mistakes}\n"
             )
         else:
             texts.append(f"{r.name}\n")
@@ -92,7 +92,7 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 async def select_group(event: MessageCreated, context: MemoryContext):
     await context.update_data(user_id=event.from_user.user_id, full_name=event.from_user.full_name)
 
-    groups = await Repository.select_group()
+    groups = await RowBuilder.select_group()
     attachments = AttachmentBuilder.from_rows(groups)
 
     message = await event.message.answer(TEXTS.STUDENT1, attachments)
@@ -109,7 +109,7 @@ async def select_student(event: MessageCallback, context: MemoryContext):
 
     data = await context.get_data()
 
-    students = await Repository.select_student(group_id)
+    students = await RowBuilder.select_student(group_id)
     attachments = AttachmentBuilder.from_rows(students)
 
     await event.bot.edit_message(data["message_id"], TEXTS.STUDENT2, attachments)
@@ -125,7 +125,7 @@ async def select_test(event: MessageCallback, context: MemoryContext):
 
     data = await context.get_data()
 
-    tests = await Repository.select_test()
+    tests = await RowBuilder.select_test()
     attachments = AttachmentBuilder.from_rows(tests)
 
     await event.bot.edit_message(data["message_id"], TEXTS.STUDENT3, attachments)
@@ -164,7 +164,7 @@ async def first_question(event: MessageCallback, context: MemoryContext):
         await context.clear()
         return
 
-    tasks = await Repository.first_question(data["test_id"])
+    tasks = await RowBuilder.first_question(data["test_id"])
     messages, options = deque(), deque()
 
     for task, progress_bar in zip(tasks, PROGRESS_BARS):
@@ -223,7 +223,7 @@ async def next_question(event: MessageCallback, context: MemoryContext):
     if not data["messages"]:
         finished_at = datetime.now()
 
-        await Repository.add_result(
+        await RowBuilder.add_result(
             data["user_id"],
             data["full_name"],
             data["group_id"],
@@ -237,7 +237,7 @@ async def next_question(event: MessageCallback, context: MemoryContext):
 
         await event.bot.edit_message(
             data["message_id"],
-            f"<code>Группа: {data['group']}\n"
+            f"<code>Группа: {data['group'].replace('-', '_')}\n"
             f"Студент: {data['student']}\n"
             f"Тест: {data['test']}\n"
             f"Дата: {finished_at.strftime('%H_%M %d_%m_%Y')}\n"

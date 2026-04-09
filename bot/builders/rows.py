@@ -14,7 +14,7 @@ async def _get_rows(stmt: str, *args) -> list[Row]:
     return rows
 
 
-class Repository:
+class RowBuilder:
     @staticmethod
     async def select_group_() -> list[Row]:
         return await _get_rows(STATEMENTS.ADMIN1)

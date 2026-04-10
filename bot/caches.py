@@ -53,8 +53,8 @@ STATEMENTS = namedtuple(
             group_id,       
             student_id,     
             test_id,
-            started_at,
             finished_at,
+            duration,
             answers,
             points
         )

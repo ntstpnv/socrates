@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey, SmallInteger, Text
@@ -25,8 +25,8 @@ class Result(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"))
     test_id: Mapped[int] = mapped_column(ForeignKey("tests.id", ondelete="CASCADE"))
 
-    started_at: Mapped[datetime]
     finished_at: Mapped[datetime]
+    duration: Mapped[timedelta]
     answers: Mapped[str] = mapped_column(Text)
     points: Mapped[int] = mapped_column(SmallInteger)
 

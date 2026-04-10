@@ -9,13 +9,14 @@ from maxapi.enums.parse_mode import ParseMode
 from maxapi.filters.command import Command, CommandStart
 from maxapi.types import InputMediaBuffer, MessageCallback, MessageCreated
 
-from bot.builders import AttachmentBuilder, RowBuilder
-from bot.caches import ATTACHMENTS, PERMUTATIONS, PROGRESS_BARS, TEXTS
+from bot.builders import AttachmentBuilder
+from bot.caches import ATTACHMENTS, PERMUTATIONS, PROGRESS_BARS, STATEMENTS, TEXTS
+from bot.db.services.repository import add_result, get_rows
 from bot.settings import ADMINS, TOKEN
 
 
-bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
+bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 
 
 class States(StatesGroup):
@@ -34,7 +35,7 @@ async def select_group_(event: MessageCreated, context: MemoryContext):
         await context.clear()
         return
 
-    groups = await RowBuilder.select_group_()
+    groups = await get_rows(STATEMENTS.ADMIN1)
     attachments = AttachmentBuilder.from_rows(groups, 1)
 
     message = await event.message.answer(TEXTS.ADMIN1, attachments)
@@ -51,7 +52,7 @@ async def select_test_(event: MessageCreated, context: MemoryContext):
 
     data = await context.get_data()
 
-    tests = await RowBuilder.select_test_(group_id)
+    tests = await get_rows(STATEMENTS.ADMIN2, group_id)
     attachments = AttachmentBuilder.from_rows(tests, 1)
 
     await event.bot.edit_message(data["message_id"], TEXTS.ADMIN2, attachments)
@@ -66,16 +67,14 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 
     data = await context.get_data()
 
-    results = await RowBuilder.get_results(data["group_id"], test_id)
+    results = await get_rows(STATEMENTS.ADMIN3, data["group_id"], test_id)
 
     texts = [f"Группа: {data['group']}", f"Тест: {test}\n"]
     for r in results:
         if r.user_id:
             mistakes = " ".join(a for a in r.answers.split() if not a.endswith("1"))
             mistakes = mistakes + "\n" if mistakes else ""
-            texts.append(
-                f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name.strip()}\n{mistakes}"
-            )
+            texts.append(f"{r.name}: {r.points} из 30\n{r.user_id} {r.full_name}\n{mistakes}")
         else:
             texts.append(f"{r.name}\n")
 
@@ -91,9 +90,12 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 
 @dp.message_created(None, CommandStart())
 async def select_group(event: MessageCreated, context: MemoryContext):
-    await context.update_data(user_id=event.from_user.user_id, full_name=event.from_user.full_name)
+    await context.update_data(
+        user_id=event.from_user.user_id,
+        full_name=event.from_user.full_name.strip(),
+    )
 
-    groups = await RowBuilder.select_group()
+    groups = await get_rows(STATEMENTS.STUDENT1)
     attachments = AttachmentBuilder.from_rows(groups)
 
     message = await event.message.answer(TEXTS.STUDENT1, attachments)
@@ -110,7 +112,7 @@ async def select_student(event: MessageCallback, context: MemoryContext):
 
     data = await context.get_data()
 
-    students = await RowBuilder.select_student(group_id)
+    students = await get_rows(STATEMENTS.STUDENT2, group_id)
     attachments = AttachmentBuilder.from_rows(students)
 
     await event.bot.edit_message(data["message_id"], TEXTS.STUDENT2, attachments)
@@ -126,7 +128,7 @@ async def select_test(event: MessageCallback, context: MemoryContext):
 
     data = await context.get_data()
 
-    tests = await RowBuilder.select_test()
+    tests = await get_rows(STATEMENTS.STUDENT3)
     attachments = AttachmentBuilder.from_rows(tests)
 
     await event.bot.edit_message(data["message_id"], TEXTS.STUDENT3, attachments)
@@ -165,7 +167,7 @@ async def first_question(event: MessageCallback, context: MemoryContext):
         await context.clear()
         return
 
-    tasks = await RowBuilder.first_question(data["test_id"])
+    tasks = await get_rows(STATEMENTS.STUDENT5, data["test_id"])
     messages, options = deque(), deque()
 
     for task, progress_bar in zip(tasks, PROGRESS_BARS):
@@ -186,10 +188,10 @@ async def first_question(event: MessageCallback, context: MemoryContext):
         )
         messages.append(
             f"<code>{progress_bar}{task.question}\n\n"
-            f"(1) {order[new_order[0]]}\n"
-            f"(2) {order[new_order[1]]}\n"
-            f"(3) {order[new_order[2]]}\n"
-            f"(4) {order[new_order[3]]}</code>"
+            f"_1_ {order[new_order[0]]}\n"
+            f"_2_ {order[new_order[1]]}\n"
+            f"_3_ {order[new_order[2]]}\n"
+            f"_4_ {order[new_order[3]]}</code>"
         )
 
     text = messages.popleft()
@@ -209,11 +211,9 @@ async def first_question(event: MessageCallback, context: MemoryContext):
 
 @dp.message_callback(States.STUDENT6)
 async def next_question(event: MessageCallback, context: MemoryContext):
-    option = event.callback.payload
-
     data = await context.get_data()
 
-    answer = data["options"].popleft()[option]
+    answer = data["options"].popleft()[event.callback.payload]
     data["answers"].append(answer)
     await context.update_data(answers=data["answers"])
 
@@ -224,14 +224,14 @@ async def next_question(event: MessageCallback, context: MemoryContext):
     if not data["messages"]:
         finished_at = datetime.now()
 
-        await RowBuilder.add_result(
+        await add_result(
             data["user_id"],
             data["full_name"],
             data["group_id"],
             data["student_id"],
             data["test_id"],
-            data["started_at"],
             finished_at,
+            finished_at - data["started_at"],
             " ".join(sorted(data["answers"], key=lambda a: (len(a), a))),
             data["points"],
         )

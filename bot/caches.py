@@ -1,20 +1,11 @@
 from collections import namedtuple
 
-from bot.builders import AttachmentBuilder
+from bot.utils.attachments import AttachmentFactory
 
 
-STATEMENTS = namedtuple(
-    "_Statement",
-    [
-        "ADMIN1",
-        "ADMIN2",
-        "ADMIN3",
-        "STUDENT1",
-        "STUDENT2",
-        "STUDENT3",
-        "STUDENT5",
-        "STUDENT6",
-    ],
+admin_statements = namedtuple(
+    "AdminStatement",
+    ["GET_GROUPS", "GET_TESTS", "GET_RESULTS"],
 )(
     """
         SELECT DISTINCT g.id, g.name
@@ -36,6 +27,12 @@ STATEMENTS = namedtuple(
         WHERE s.group_id = $1
         ORDER BY s.name, r.user_id, r.points DESC, r.finished_at DESC
     """,
+)
+
+user_statements = namedtuple(
+    "UserStatement",
+    ["GET_GROUPS", "GET_STUDENTS", "GET_TESTS", "GET_TASKS", "ADD_RESULT"],
+)(
     "SELECT * FROM groups g ORDER BY g.name",
     "SELECT s.id, s.name FROM students s WHERE group_id = $1 ORDER BY s.name",
     "SELECT * FROM tests t ORDER BY t.name",
@@ -53,10 +50,10 @@ STATEMENTS = namedtuple(
             group_id,       
             student_id,     
             test_id,
-            finished_at,
-            duration,
             answers,
-            points
+            points,
+            finished_at,
+            duration
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)          
     """,
@@ -64,7 +61,7 @@ STATEMENTS = namedtuple(
 
 TEXTS = namedtuple(
     "_Text",
-    ["ADMIN1", "ADMIN2", "STUDENT1", "STUDENT2", "STUDENT3", "STOP"],
+    ["ADMIN1", "ADMIN2", "USER1", "USER2", "USER3", "STOP"],
 )(
     "<code>Шаг 1:\n\nВыберите группу</code>",
     "<code>Шаг 2:\n\nВыберите тест</code>",
@@ -76,10 +73,10 @@ TEXTS = namedtuple(
 
 ATTACHMENTS = namedtuple(
     "_Attachment",
-    ["STUDENT4", "QUESTION"],
+    ["USER4", "QUESTION"],
 )(
-    AttachmentBuilder.from_iterable(("Начать тест", "Выбрать заново"), 1),
-    AttachmentBuilder.from_iterable(("1", "2", "3", "4"), 4),
+    AttachmentFactory.from_items(("Начать тест", "Выбрать заново"), 1),
+    AttachmentFactory.from_items(("1", "2", "3", "4"), 4),
 )
 
 PERMUTATIONS = (

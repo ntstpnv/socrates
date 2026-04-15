@@ -25,10 +25,10 @@ class Result(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"))
     test_id: Mapped[int] = mapped_column(ForeignKey("tests.id", ondelete="CASCADE"))
 
-    finished_at: Mapped[datetime]
-    duration: Mapped[timedelta]
     answers: Mapped[str] = mapped_column(Text)
     points: Mapped[int] = mapped_column(SmallInteger)
+    finished_at: Mapped[datetime]
+    duration: Mapped[timedelta]
 
     group: Mapped["Group"] = relationship(back_populates="results")
     student: Mapped["Student"] = relationship(back_populates="results")

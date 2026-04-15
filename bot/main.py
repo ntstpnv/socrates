@@ -9,11 +9,18 @@ from maxapi.enums.parse_mode import ParseMode
 from maxapi.filters.command import Command, CommandStart
 from maxapi.types import InputMediaBuffer, MessageCallback, MessageCreated
 
-from bot.builders import AttachmentBuilder
-from bot.caches import ATTACHMENTS, PERMUTATIONS, PROGRESS_BARS, STATEMENTS, TEXTS
-from bot.db.services.repository import add_result, get_rows
+from bot.caches import (
+    ATTACHMENTS,
+    PERMUTATIONS,
+    PROGRESS_BARS,
+    TEXTS,
+    admin_statements,
+    user_statements,
+)
 from bot.settings import ADMINS, TOKEN
-
+from bot.utils.attachments import AttachmentFactory
+from bot.utils.results import add_result
+from bot.utils.rows import get_rows
 
 dp = Dispatcher()
 bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
@@ -22,21 +29,21 @@ bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 class States(StatesGroup):
     ADMIN2 = State()
     ADMIN3 = State()
-    STUDENT2 = State()
-    STUDENT3 = State()
-    STUDENT4 = State()
-    STUDENT5 = State()
-    STUDENT6 = State()
+    USER2 = State()
+    USER3 = State()
+    USER4 = State()
+    USER5 = State()
+    USER6 = State()
 
 
 @dp.message_created(None, Command("admin"))
-async def select_group_(event: MessageCreated, context: MemoryContext):
+async def admin_selects_group(event: MessageCreated, context: MemoryContext):
     if event.from_user.user_id not in ADMINS:
         await context.clear()
         return
 
-    groups = await get_rows(STATEMENTS.ADMIN1)
-    attachments = AttachmentBuilder.from_rows(groups, 1)
+    groups = await get_rows(admin_statements.GET_GROUPS)
+    attachments = AttachmentFactory.from_rows(groups, 1)
 
     message = await event.message.answer(TEXTS.ADMIN1, attachments)
     await context.update_data(message_id=message.message.body.mid)
@@ -45,15 +52,15 @@ async def select_group_(event: MessageCreated, context: MemoryContext):
 
 
 @dp.message_callback(States.ADMIN2)
-async def select_test_(event: MessageCreated, context: MemoryContext):
+async def admin_selects_test(event: MessageCreated, context: MemoryContext):
     group_id, _, group = event.callback.payload.partition("=")
     group_id = int(group_id)
     await context.update_data(group_id=group_id, group=group)
 
     data = await context.get_data()
 
-    tests = await get_rows(STATEMENTS.ADMIN2, group_id)
-    attachments = AttachmentBuilder.from_rows(tests, 1)
+    tests = await get_rows(admin_statements.GET_TESTS, group_id)
+    attachments = AttachmentFactory.from_rows(tests, 1)
 
     await event.bot.edit_message(data["message_id"], TEXTS.ADMIN2, attachments)
 
@@ -61,13 +68,13 @@ async def select_test_(event: MessageCreated, context: MemoryContext):
 
 
 @dp.message_callback(States.ADMIN3)
-async def get_results(event: MessageCreated, context: MemoryContext):
+async def admin_gets_results(event: MessageCreated, context: MemoryContext):
     test_id, _, test = event.callback.payload.partition("=")
     test_id = int(test_id)
 
     data = await context.get_data()
 
-    results = await get_rows(STATEMENTS.ADMIN3, data["group_id"], test_id)
+    results = await get_rows(admin_statements.GET_RESULTS, data["group_id"], test_id)
 
     texts = [f"Группа: {data['group']}", f"Тест: {test}\n"]
     for r in results:
@@ -89,55 +96,52 @@ async def get_results(event: MessageCreated, context: MemoryContext):
 
 
 @dp.message_created(None, CommandStart())
-async def select_group(event: MessageCreated, context: MemoryContext):
-    await context.update_data(
-        user_id=event.from_user.user_id,
-        full_name=event.from_user.full_name.strip(),
-    )
+async def user_selects_group(event: MessageCreated, context: MemoryContext):
+    await context.update_data(user_id=event.from_user.user_id, full_name=event.from_user.full_name)
 
-    groups = await get_rows(STATEMENTS.STUDENT1)
-    attachments = AttachmentBuilder.from_rows(groups)
+    groups = await get_rows(user_statements.GET_GROUPS)
+    attachments = AttachmentFactory.from_rows(groups)
 
-    message = await event.message.answer(TEXTS.STUDENT1, attachments)
+    message = await event.message.answer(TEXTS.USER1, attachments)
     await context.update_data(message_id=message.message.body.mid)
 
-    await context.set_state(States.STUDENT2)
+    await context.set_state(States.USER2)
 
 
-@dp.message_callback(States.STUDENT2)
-async def select_student(event: MessageCallback, context: MemoryContext):
+@dp.message_callback(States.USER2)
+async def user_selects_student(event: MessageCallback, context: MemoryContext):
     group_id, _, group = event.callback.payload.partition("=")
     group_id = int(group_id)
     await context.update_data(group_id=group_id, group=group)
 
     data = await context.get_data()
 
-    students = await get_rows(STATEMENTS.STUDENT2, group_id)
-    attachments = AttachmentBuilder.from_rows(students)
+    students = await get_rows(user_statements.GET_STUDENTS, group_id)
+    attachments = AttachmentFactory.from_rows(students)
 
-    await event.bot.edit_message(data["message_id"], TEXTS.STUDENT2, attachments)
+    await event.bot.edit_message(data["message_id"], TEXTS.USER2, attachments)
 
-    await context.set_state(States.STUDENT3)
+    await context.set_state(States.USER3)
 
 
-@dp.message_callback(States.STUDENT3)
-async def select_test(event: MessageCallback, context: MemoryContext):
+@dp.message_callback(States.USER3)
+async def user_selects_test(event: MessageCallback, context: MemoryContext):
     student_id, _, student = event.callback.payload.partition("=")
     student_id = int(student_id)
     await context.update_data(student_id=student_id, student=student)
 
     data = await context.get_data()
 
-    tests = await get_rows(STATEMENTS.STUDENT3)
-    attachments = AttachmentBuilder.from_rows(tests)
+    tests = await get_rows(user_statements.GET_TESTS)
+    attachments = AttachmentFactory.from_rows(tests)
 
-    await event.bot.edit_message(data["message_id"], TEXTS.STUDENT3, attachments)
+    await event.bot.edit_message(data["message_id"], TEXTS.USER3, attachments)
 
-    await context.set_state(States.STUDENT4)
+    await context.set_state(States.USER4)
 
 
-@dp.message_callback(States.STUDENT4)
-async def get_confirm(event: MessageCallback, context: MemoryContext):
+@dp.message_callback(States.USER4)
+async def user_confirms_selection(event: MessageCallback, context: MemoryContext):
     test_id, _, test = event.callback.payload.partition("=")
     test_id = int(test_id)
     await context.update_data(test_id=test_id, test=test)
@@ -147,18 +151,18 @@ async def get_confirm(event: MessageCallback, context: MemoryContext):
     text = (
         f"<code>Шаг 4:\n"
         f"Подтвердите правильность выбора\n\n"
-        f"Група: {data['group'].replace('-', '_')}\n"
+        f"Група: {data['group']}\n"
         f"Студент: {data['student']}\n"
         f"Тест: {test}</code>"
     )
 
-    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.STUDENT4)
+    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.USER4)
 
-    await context.set_state(States.STUDENT5)
+    await context.set_state(States.USER5)
 
 
-@dp.message_callback(States.STUDENT5)
-async def first_question(event: MessageCallback, context: MemoryContext):
+@dp.message_callback(States.USER5)
+async def user_gets_first_question(event: MessageCallback, context: MemoryContext):
     data = await context.get_data()
 
     if event.callback.payload == "Выбрать заново":
@@ -167,7 +171,7 @@ async def first_question(event: MessageCallback, context: MemoryContext):
         await context.clear()
         return
 
-    tasks = await get_rows(STATEMENTS.STUDENT5, data["test_id"])
+    tasks = await get_rows(user_statements.GET_TASKS, data["test_id"])
     messages, options = deque(), deque()
 
     for task, progress_bar in zip(tasks, PROGRESS_BARS):
@@ -188,10 +192,10 @@ async def first_question(event: MessageCallback, context: MemoryContext):
         )
         messages.append(
             f"<code>{progress_bar}{task.question}\n\n"
-            f"_1_ {order[new_order[0]]}\n"
-            f"_2_ {order[new_order[1]]}\n"
-            f"_3_ {order[new_order[2]]}\n"
-            f"_4_ {order[new_order[3]]}</code>"
+            f"[1] {order[new_order[0]]}\n"
+            f"[2] {order[new_order[1]]}\n"
+            f"[3] {order[new_order[2]]}\n"
+            f"[4] {order[new_order[3]]}</code>"
         )
 
     text = messages.popleft()
@@ -206,11 +210,11 @@ async def first_question(event: MessageCallback, context: MemoryContext):
 
     await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.QUESTION)
 
-    await context.set_state(States.STUDENT6)
+    await context.set_state(States.USER6)
 
 
-@dp.message_callback(States.STUDENT6)
-async def next_question(event: MessageCallback, context: MemoryContext):
+@dp.message_callback(States.USER6)
+async def user_gets_next_question(event: MessageCallback, context: MemoryContext):
     data = await context.get_data()
 
     answer = data["options"].popleft()[event.callback.payload]
@@ -230,18 +234,18 @@ async def next_question(event: MessageCallback, context: MemoryContext):
             data["group_id"],
             data["student_id"],
             data["test_id"],
-            finished_at,
-            finished_at - data["started_at"],
             " ".join(sorted(data["answers"], key=lambda a: (len(a), a))),
             data["points"],
+            finished_at,
+            finished_at - data["started_at"],
         )
 
         await event.bot.edit_message(
             data["message_id"],
-            f"<code>Группа: {data['group'].replace('-', '_')}\n"
+            f"<code>Группа: {data['group']}\n"
             f"Студент: {data['student']}\n"
             f"Тест: {data['test']}\n"
-            f"Дата: {finished_at.strftime('%H_%M %d_%m_%Y')}\n"
+            f"Дата: {finished_at.strftime('%H:%M %d.%m.%Y')}\n"
             f"Результат: {data['points']} из 30</code>",
         )
 

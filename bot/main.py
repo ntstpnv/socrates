@@ -20,7 +20,7 @@ from bot.caches import (
     UserText,
 )
 from bot.settings import ADMINS, TOKEN
-from bot.utils.attachments import AttachmentFactory
+from bot.utils.attachments import AttachmentFactory, Payload
 from bot.utils.results import add_result
 from bot.utils.rows import get_rows
 
@@ -54,15 +54,13 @@ async def admin_selects_group(event: MessageCreated, context: MemoryContext):
     await context.set_state(States.ADMIN2)
 
 
-@dp.message_callback(States.ADMIN2)
-async def admin_selects_test(event: MessageCreated, context: MemoryContext):
-    group_id, _, group = event.callback.payload.partition("=")
-    group_id = int(group_id)
-    await context.update_data(group_id=group_id, group=group)
+@dp.message_callback(States.ADMIN2, Payload.filter())
+async def admin_selects_test(event: MessageCreated, context: MemoryContext, payload: Payload):
+    await context.update_data(group_id=payload.id, group=payload.name)
 
     data = await context.get_data()
 
-    tests = await get_rows(AdminStatement.GET_TESTS, group_id)
+    tests = await get_rows(AdminStatement.GET_TESTS, payload.id)
     attachments = AttachmentFactory.from_rows(tests, 1)
 
     await event.bot.edit_message(data["message_id"], AdminText.SELECT_TEST, attachments)
@@ -70,16 +68,13 @@ async def admin_selects_test(event: MessageCreated, context: MemoryContext):
     await context.set_state(States.ADMIN3)
 
 
-@dp.message_callback(States.ADMIN3)
-async def admin_gets_results(event: MessageCreated, context: MemoryContext):
-    test_id, _, test = event.callback.payload.partition("=")
-    test_id = int(test_id)
-
+@dp.message_callback(States.ADMIN3, Payload.filter())
+async def admin_gets_results(event: MessageCreated, context: MemoryContext, payload: Payload):
     data = await context.get_data()
 
-    results = await get_rows(AdminStatement.GET_RESULTS, data["group_id"], test_id)
+    results = await get_rows(AdminStatement.GET_RESULTS, data["group_id"], payload.id)
 
-    texts = [f"Группа: {data['group']}", f"Тест: {test}\n"]
+    texts = [f"Группа: {data['group']}", f"Тест: {payload.name}\n"]
     for r in results:
         if r.user_id:
             mistakes = " ".join(a for a in r.answers.split() if not a.endswith("1"))
@@ -111,15 +106,13 @@ async def user_selects_group(event: MessageCreated, context: MemoryContext):
     await context.set_state(States.USER2)
 
 
-@dp.message_callback(States.USER2)
-async def user_selects_student(event: MessageCallback, context: MemoryContext):
-    group_id, _, group = event.callback.payload.partition("=")
-    group_id = int(group_id)
-    await context.update_data(group_id=group_id, group=group)
+@dp.message_callback(States.USER2, Payload.filter())
+async def user_selects_student(event: MessageCallback, context: MemoryContext, payload: Payload):
+    await context.update_data(group_id=payload.id, group=payload.name)
 
     data = await context.get_data()
 
-    students = await get_rows(UserStatement.GET_STUDENTS, group_id)
+    students = await get_rows(UserStatement.GET_STUDENTS, payload.id)
     attachments = AttachmentFactory.from_rows(students)
 
     await event.bot.edit_message(data["message_id"], UserText.SELECT_STUDENT, attachments)
@@ -127,11 +120,9 @@ async def user_selects_student(event: MessageCallback, context: MemoryContext):
     await context.set_state(States.USER3)
 
 
-@dp.message_callback(States.USER3)
-async def user_selects_test(event: MessageCallback, context: MemoryContext):
-    student_id, _, student = event.callback.payload.partition("=")
-    student_id = int(student_id)
-    await context.update_data(student_id=student_id, student=student)
+@dp.message_callback(States.USER3, Payload.filter())
+async def user_selects_test(event: MessageCallback, context: MemoryContext, payload: Payload):
+    await context.update_data(student_id=payload.id, student=payload.name)
 
     data = await context.get_data()
 
@@ -143,11 +134,9 @@ async def user_selects_test(event: MessageCallback, context: MemoryContext):
     await context.set_state(States.USER4)
 
 
-@dp.message_callback(States.USER4)
-async def user_confirms_selection(event: MessageCallback, context: MemoryContext):
-    test_id, _, test = event.callback.payload.partition("=")
-    test_id = int(test_id)
-    await context.update_data(test_id=test_id, test=test)
+@dp.message_callback(States.USER4, Payload.filter())
+async def user_confirms_selection(event: MessageCallback, context: MemoryContext, payload: Payload):
+    await context.update_data(test_id=payload.id, test=payload.name)
 
     data = await context.get_data()
 
@@ -155,9 +144,9 @@ async def user_confirms_selection(event: MessageCallback, context: MemoryContext
         f"<code>Шаг 4:\n"
         f"Подтвердите правильность выбора\n"
         f"\n"
-        f"Група: {'\u200b'.join(data['group'])}\n"
+        f"Група: {data['group'].replace('-', '_')}\n"
         f"Студент: {data['student']}\n"
-        f"Тест: {test}</code>"
+        f"Тест: {payload.name}</code>"
     )
 
     await event.bot.edit_message(data["message_id"], text, UserAttachment.CONFIRM)
@@ -195,11 +184,13 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
             }
         )
         messages.append(
-            f"<code>{progress_bar}{task.question}\n\n"
-            f"[1] {'\u200b'.join(order[new_order[0]])}\n"
-            f"[2] {'\u200b'.join(order[new_order[1]])}\n"
-            f"[3] {'\u200b'.join(order[new_order[2]])}\n"
-            f"[4] {'\u200b'.join(order[new_order[3]])}</code>"
+            f"<code>{progress_bar}"
+            f"{task.question}\n"
+            f"\n"
+            f"1_ {order[new_order[0]]}\n"
+            f"2_ {order[new_order[1]]}\n"
+            f"3_ {order[new_order[2]]}\n"
+            f"4_ {order[new_order[3]]}</code>"
         )
 
     text = messages.popleft()
@@ -246,10 +237,10 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
 
         await event.bot.edit_message(
             data["message_id"],
-            f"<code>Группа: {'\u200b'.join(data['group'])}\n"
+            f"<code>Группа: {data['group'].replace('-', '_')}\n"
             f"Студент: {data['student']}\n"
             f"Тест: {data['test']}\n"
-            f"Дата: {'\u200b'.join(finished_at.strftime('%H:%M %d.%m.%Y'))}\n"
+            f"Дата: {finished_at.strftime('%H_%M %d_%m_%Y')}\n"
             f"Результат: {data['points']} из 30</code>",
         )
 

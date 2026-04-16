@@ -77,7 +77,7 @@ class UserText:
 
 
 class UserAttachment:
-    CONFIRM = AttachmentFactory.from_items(("Начать тест", "Выбрать заново"), 1)
+    CONFIRM = AttachmentFactory.from_items(("Начать тест", "Выбрать заново"))
     OPTIONS = AttachmentFactory.from_items(("1", "2", "3", "4"), 4)
 
 

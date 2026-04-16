@@ -10,17 +10,20 @@ from maxapi.filters.command import Command, CommandStart
 from maxapi.types import InputMediaBuffer, MessageCallback, MessageCreated
 
 from bot.caches import (
-    ATTACHMENTS,
     PERMUTATIONS,
     PROGRESS_BARS,
-    TEXTS,
-    admin_statements,
-    user_statements,
+    AdminStatement,
+    AdminText,
+    CommandText,
+    UserAttachment,
+    UserStatement,
+    UserText,
 )
 from bot.settings import ADMINS, TOKEN
 from bot.utils.attachments import AttachmentFactory
 from bot.utils.results import add_result
 from bot.utils.rows import get_rows
+
 
 dp = Dispatcher()
 bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
@@ -42,10 +45,10 @@ async def admin_selects_group(event: MessageCreated, context: MemoryContext):
         await context.clear()
         return
 
-    groups = await get_rows(admin_statements.GET_GROUPS)
+    groups = await get_rows(AdminStatement.GET_GROUPS)
     attachments = AttachmentFactory.from_rows(groups, 1)
 
-    message = await event.message.answer(TEXTS.ADMIN1, attachments)
+    message = await event.message.answer(AdminText.SELECT_GROUP, attachments)
     await context.update_data(message_id=message.message.body.mid)
 
     await context.set_state(States.ADMIN2)
@@ -59,10 +62,10 @@ async def admin_selects_test(event: MessageCreated, context: MemoryContext):
 
     data = await context.get_data()
 
-    tests = await get_rows(admin_statements.GET_TESTS, group_id)
+    tests = await get_rows(AdminStatement.GET_TESTS, group_id)
     attachments = AttachmentFactory.from_rows(tests, 1)
 
-    await event.bot.edit_message(data["message_id"], TEXTS.ADMIN2, attachments)
+    await event.bot.edit_message(data["message_id"], AdminText.SELECT_TEST, attachments)
 
     await context.set_state(States.ADMIN3)
 
@@ -74,7 +77,7 @@ async def admin_gets_results(event: MessageCreated, context: MemoryContext):
 
     data = await context.get_data()
 
-    results = await get_rows(admin_statements.GET_RESULTS, data["group_id"], test_id)
+    results = await get_rows(AdminStatement.GET_RESULTS, data["group_id"], test_id)
 
     texts = [f"Группа: {data['group']}", f"Тест: {test}\n"]
     for r in results:
@@ -99,10 +102,10 @@ async def admin_gets_results(event: MessageCreated, context: MemoryContext):
 async def user_selects_group(event: MessageCreated, context: MemoryContext):
     await context.update_data(user_id=event.from_user.user_id, full_name=event.from_user.full_name)
 
-    groups = await get_rows(user_statements.GET_GROUPS)
+    groups = await get_rows(UserStatement.GET_GROUPS)
     attachments = AttachmentFactory.from_rows(groups)
 
-    message = await event.message.answer(TEXTS.USER1, attachments)
+    message = await event.message.answer(UserText.SELECT_GROUP, attachments)
     await context.update_data(message_id=message.message.body.mid)
 
     await context.set_state(States.USER2)
@@ -116,10 +119,10 @@ async def user_selects_student(event: MessageCallback, context: MemoryContext):
 
     data = await context.get_data()
 
-    students = await get_rows(user_statements.GET_STUDENTS, group_id)
+    students = await get_rows(UserStatement.GET_STUDENTS, group_id)
     attachments = AttachmentFactory.from_rows(students)
 
-    await event.bot.edit_message(data["message_id"], TEXTS.USER2, attachments)
+    await event.bot.edit_message(data["message_id"], UserText.SELECT_STUDENT, attachments)
 
     await context.set_state(States.USER3)
 
@@ -132,10 +135,10 @@ async def user_selects_test(event: MessageCallback, context: MemoryContext):
 
     data = await context.get_data()
 
-    tests = await get_rows(user_statements.GET_TESTS)
+    tests = await get_rows(UserStatement.GET_TESTS)
     attachments = AttachmentFactory.from_rows(tests)
 
-    await event.bot.edit_message(data["message_id"], TEXTS.USER3, attachments)
+    await event.bot.edit_message(data["message_id"], UserText.SELECT_TEST, attachments)
 
     await context.set_state(States.USER4)
 
@@ -150,13 +153,14 @@ async def user_confirms_selection(event: MessageCallback, context: MemoryContext
 
     text = (
         f"<code>Шаг 4:\n"
-        f"Подтвердите правильность выбора\n\n"
-        f"Група: {data['group']}\n"
+        f"Подтвердите правильность выбора\n"
+        f"\n"
+        f"Група: {'\u200b'.join(data['group'])}\n"
         f"Студент: {data['student']}\n"
         f"Тест: {test}</code>"
     )
 
-    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.USER4)
+    await event.bot.edit_message(data["message_id"], text, UserAttachment.CONFIRM)
 
     await context.set_state(States.USER5)
 
@@ -166,12 +170,12 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
     data = await context.get_data()
 
     if event.callback.payload == "Выбрать заново":
-        await event.bot.edit_message(data["message_id"], TEXTS.STOP)
+        await event.bot.edit_message(data["message_id"], CommandText.STOP)
 
         await context.clear()
         return
 
-    tasks = await get_rows(user_statements.GET_TASKS, data["test_id"])
+    tasks = await get_rows(UserStatement.GET_TASKS, data["test_id"])
     messages, options = deque(), deque()
 
     for task, progress_bar in zip(tasks, PROGRESS_BARS):
@@ -192,10 +196,10 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
         )
         messages.append(
             f"<code>{progress_bar}{task.question}\n\n"
-            f"[1] {order[new_order[0]]}\n"
-            f"[2] {order[new_order[1]]}\n"
-            f"[3] {order[new_order[2]]}\n"
-            f"[4] {order[new_order[3]]}</code>"
+            f"[1] {'\u200b'.join(order[new_order[0]])}\n"
+            f"[2] {'\u200b'.join(order[new_order[1]])}\n"
+            f"[3] {'\u200b'.join(order[new_order[2]])}\n"
+            f"[4] {'\u200b'.join(order[new_order[3]])}</code>"
         )
 
     text = messages.popleft()
@@ -208,7 +212,7 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
         started_at=datetime.now(),
     )
 
-    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.QUESTION)
+    await event.bot.edit_message(data["message_id"], text, UserAttachment.OPTIONS)
 
     await context.set_state(States.USER6)
 
@@ -242,10 +246,10 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
 
         await event.bot.edit_message(
             data["message_id"],
-            f"<code>Группа: {data['group']}\n"
+            f"<code>Группа: {'\u200b'.join(data['group'])}\n"
             f"Студент: {data['student']}\n"
             f"Тест: {data['test']}\n"
-            f"Дата: {finished_at.strftime('%H:%M %d.%m.%Y')}\n"
+            f"Дата: {'\u200b'.join(finished_at.strftime('%H:%M %d.%m.%Y'))}\n"
             f"Результат: {data['points']} из 30</code>",
         )
 
@@ -255,7 +259,7 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
     text = data["messages"].popleft()
     await context.update_data(messages=data["messages"])
 
-    await event.bot.edit_message(data["message_id"], text, ATTACHMENTS.QUESTION)
+    await event.bot.edit_message(data["message_id"], text, UserAttachment.OPTIONS)
 
 
 @dp.message_created(Command("stop"))
@@ -263,7 +267,7 @@ async def stop(event: MessageCreated, context: MemoryContext):
     data = await context.get_data()
 
     if message_id := data.get("message_id"):
-        await event.bot.edit_message(message_id, TEXTS.STOP)
+        await event.bot.edit_message(message_id, CommandText.STOP)
 
     await context.clear()
     return

@@ -1,49 +1,41 @@
-from collections import namedtuple
-
 from bot.utils.attachments import AttachmentFactory
 
 
-admin_statements = namedtuple(
-    "AdminStatement",
-    ["GET_GROUPS", "GET_TESTS", "GET_RESULTS"],
-)(
-    """
+class AdminStatement:
+    GET_GROUPS = """
         SELECT DISTINCT g.id, g.name
         FROM groups g
         JOIN results r ON g.id = r.group_id
         ORDER BY g.name
-    """,
     """
+    GET_TESTS = """
         SELECT DISTINCT t.id, t.name
         FROM tests t
         JOIN results r ON t.id = r.test_id
         WHERE r.group_id = $1
         ORDER BY t.name
-    """,
     """
+    GET_RESULTS = """
         SELECT DISTINCT ON (s.name, r.user_id) s.name, r.user_id, r.full_name, r.answers, r.points  
         FROM students s
         LEFT JOIN results r ON s.id = r.student_id AND r.test_id = $2
         WHERE s.group_id = $1
         ORDER BY s.name, r.user_id, r.points DESC, r.finished_at DESC
-    """,
-)
-
-user_statements = namedtuple(
-    "UserStatement",
-    ["GET_GROUPS", "GET_STUDENTS", "GET_TESTS", "GET_TASKS", "ADD_RESULT"],
-)(
-    "SELECT * FROM groups g ORDER BY g.name",
-    "SELECT s.id, s.name FROM students s WHERE group_id = $1 ORDER BY s.name",
-    "SELECT * FROM tests t ORDER BY t.name",
     """
+
+
+class UserStatement:
+    GET_GROUPS = "SELECT * FROM groups g ORDER BY g.name"
+    GET_STUDENTS = "SELECT s.id, s.name FROM students s WHERE group_id = $1 ORDER BY s.name"
+    GET_TESTS = "SELECT * FROM tests t ORDER BY t.name"
+    GET_TASKS = """
         SELECT t.id, t.question, t.option1, t.option2, t.option3, t.option4
         FROM tasks t
         WHERE test_id = $1
         ORDER BY RANDOM()
         LIMIT 30
-    """,
     """
+    ADD_RESULT = """
         INSERT INTO results (
             user_id,               
             full_name,          
@@ -56,28 +48,38 @@ user_statements = namedtuple(
             duration
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)          
-    """,
-)
+    """
 
-TEXTS = namedtuple(
-    "_Text",
-    ["ADMIN1", "ADMIN2", "USER1", "USER2", "USER3", "STOP"],
-)(
-    "<code>Шаг 1:\n\nВыберите группу</code>",
-    "<code>Шаг 2:\n\nВыберите тест</code>",
-    "<code>Шаг 1:\n\nВыберите вашу группу</code>",
-    "<code>Шаг 2:\n\nВыберите себя из списка</code>",
-    "<code>Шаг 3:\n\nВыберите необходимый тест</code>",
-    "<code>Выполнение прервано</code>",
-)
 
-ATTACHMENTS = namedtuple(
-    "_Attachment",
-    ["USER4", "QUESTION"],
-)(
-    AttachmentFactory.from_items(("Начать тест", "Выбрать заново"), 1),
-    AttachmentFactory.from_items(("1", "2", "3", "4"), 4),
-)
+def set_font(cls):
+    for attribute, text in vars(cls).items():
+        if not attribute.startswith("_"):
+            setattr(cls, attribute, f"<code>{text}</code>")
+    return cls
+
+
+@set_font
+class CommandText:
+    STOP = "Выполнение прервано"
+
+
+@set_font
+class AdminText:
+    SELECT_GROUP = "Шаг 1:\n\nВыберите группу"
+    SELECT_TEST = "Шаг 2:\n\nВыберите тест"
+
+
+@set_font
+class UserText:
+    SELECT_GROUP = "Шаг 1:\n\nВыберите вашу группу"
+    SELECT_STUDENT = "Шаг 2:\n\nВыберите себя из списка"
+    SELECT_TEST = "Шаг 3:\n\nВыберите необходимый тест"
+
+
+class UserAttachment:
+    CONFIRM = AttachmentFactory.from_items(("Начать тест", "Выбрать заново"), 1)
+    OPTIONS = AttachmentFactory.from_items(("1", "2", "3", "4"), 4)
+
 
 PERMUTATIONS = (
     ("1", "2", "3", "4"),
@@ -105,6 +107,7 @@ PERMUTATIONS = (
     ("4", "3", "1", "2"),
     ("4", "3", "2", "1"),
 )
+
 
 PROGRESS_BARS = (
     "Вопрос 1 из 30:\n",

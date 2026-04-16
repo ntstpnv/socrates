@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from bot.caches import user_statements
+from bot.caches import UserStatement
 from bot.settings import ASYNC_ENGINE
 
 
@@ -17,7 +17,7 @@ async def add_result(
 ) -> None:
     async with ASYNC_ENGINE.begin() as async_connection:
         await async_connection.exec_driver_sql(
-            user_statements.ADD_RESULT,
+            UserStatement.ADD_RESULT,
             (
                 user_id,
                 full_name,

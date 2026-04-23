@@ -55,7 +55,7 @@ async def admin_selects_group(event: MessageCreated, context: MemoryContext):
 
 
 @dp.message_callback(States.ADMIN2, Payload.filter())
-async def admin_selects_test(event: MessageCreated, context: MemoryContext, payload: Payload):
+async def admin_selects_test(event: MessageCallback, context: MemoryContext, payload: Payload):
     await context.update_data(group_id=payload.id, group=payload.name)
 
     data = await context.get_data()
@@ -69,7 +69,7 @@ async def admin_selects_test(event: MessageCreated, context: MemoryContext, payl
 
 
 @dp.message_callback(States.ADMIN3, Payload.filter())
-async def admin_gets_results(event: MessageCreated, context: MemoryContext, payload: Payload):
+async def admin_gets_results(event: MessageCallback, context: MemoryContext, payload: Payload):
     data = await context.get_data()
 
     results = await get_rows(AdminStatement.GET_RESULTS, data["group_id"], payload.id)
@@ -144,7 +144,7 @@ async def user_confirms_selection(event: MessageCallback, context: MemoryContext
         f"<code>Шаг 4:\n"
         f"Подтвердите правильность выбора\n"
         f"\n"
-        f"Група: {data['group'].replace('-', '_')}\n"
+        f"Група: {'\u200b'.join(data['group'])}\n"
         f"Студент: {data['student']}\n"
         f"Тест: {payload.name}</code>"
     )
@@ -185,12 +185,12 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
         )
         messages.append(
             f"<code>{progress_bar}"
-            f"{task.question}\n"
+            f"{'\u200b'.join(task.question)}\n"
             f"\n"
-            f"1_ {order[new_order[0]]}\n"
-            f"2_ {order[new_order[1]]}\n"
-            f"3_ {order[new_order[2]]}\n"
-            f"4_ {order[new_order[3]]}</code>"
+            f"[1] {'\u200b'.join(order[new_order[0]])}\n"
+            f"[2] {'\u200b'.join(order[new_order[1]])}\n"
+            f"[3] {'\u200b'.join(order[new_order[2]])}\n"
+            f"[4] {'\u200b'.join(order[new_order[3]])}</code>"
         )
 
     text = messages.popleft()
@@ -237,10 +237,10 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
 
         await event.bot.edit_message(
             data["message_id"],
-            f"<code>Группа: {data['group'].replace('-', '_')}\n"
+            f"<code>Группа: {'\u200b'.join(data['group'])}\n"
             f"Студент: {data['student']}\n"
             f"Тест: {data['test']}\n"
-            f"Дата: {finished_at.strftime('%H_%M %d_%m_%Y')}\n"
+            f"Дата: {'\u200b'.join(finished_at.strftime('%H:%M %d.%m.%Y'))}\n"
             f"Результат: {data['points']} из 30</code>",
         )
 
@@ -254,7 +254,7 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
 
 
 @dp.message_created(Command("stop"))
-async def stop(event: MessageCreated, context: MemoryContext):
+async def stop(event: MessageCallback, context: MemoryContext):
     data = await context.get_data()
 
     if message_id := data.get("message_id"):

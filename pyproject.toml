@@ -1,0 +1,25 @@
+[project]
+name = "socrates"
+version = "0.3.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "maxapi>=1.2.0",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.51",
+]
+
+[tool.ruff]
+builtins = ["_"]
+fix = true
+line-length = 128
+src = ["bot"]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+lines-between-types = 1

@@ -88,7 +88,7 @@ async def admin_gets_results(event: MessageCallback, context: MemoryContext, pay
             texts.append(f"{r.name}\n")
 
     text = "\n".join(texts)
-    attachments = [InputMediaBuffer(text.encode("utf-8"), "results.txt")]
+    attachments = [InputMediaBuffer(text.encode("utf-8-sig"), "results.txt")]
 
     await event.message.delete()
     await event.bot.send_message(event.chat.chat_id, attachments=attachments)

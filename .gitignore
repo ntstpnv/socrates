@@ -1,17 +1,7 @@
-# Настройки IDE
 .idea/
-
-# Виртуальное окружение
+.ruff_cache/
 .venv/
-
-# Блокировка зависимостей
-uv.lock
-
-# Кэш для Python
 __pycache__/
 
-# Кэш для Ruff
-.ruff_cache/
-
-# Переменные окружения
-.env
+backup/
+secrets/

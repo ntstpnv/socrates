@@ -1,20 +1,14 @@
-# Контроль версий
-.git
-
-# Настройки IDE
+.git/
 .idea/
-
-# Виртуальное окружение
+.ruff_cache/
 .venv/
-
-# Кэш для Python
 __pycache__/
 
-# Кэш для Ruff
-.ruff_cache/
+backup/
+scripts/
+secrets/
 
-# Конфигурация для Docker
+compose.yaml
 Dockerfile
-
-#
+postgresql.conf
 README.md

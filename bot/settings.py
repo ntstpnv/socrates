@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 BACKUP_DIR = BASE_DIR / "backup"
 BACKUP_DIR.mkdir(exist_ok=True)
 
-SECRETS_DIR = Path(getenv("SECRETS_DIR", "")) or BASE_DIR / "secrets"
+SECRETS_DIR = Path(getenv("SECRETS_DIR") or BASE_DIR / "secrets")
 
 
 def read_secret(secret: str) -> str:

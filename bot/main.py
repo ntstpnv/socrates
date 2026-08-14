@@ -132,7 +132,7 @@ async def user_selects_test(event: MessageCallback, context: MemoryContext, payl
     await context.update_data(student_id=payload.id, student=payload.name)
 
     tests = await get_rows(UserStatement.GET_TESTS)
-    attachments = AttachmentFactory.from_rows(data["step"], tests, 1)
+    attachments = AttachmentFactory.from_rows(data["step"], tests, 2)
 
     await event.bot.edit_message(data["message_id"], UserText.SELECT_TEST, attachments)
 

@@ -14,7 +14,7 @@ SECRETS_DIR = Path(getenv("SECRETS_DIR") or BASE_DIR / "secrets")
 
 
 def read_secret(secret: str) -> str:
-    with open(SECRETS_DIR / secret, encoding="utf-8") as file:
+    with open(SECRETS_DIR / f"{secret}.txt", encoding="utf-8") as file:
         return file.read().strip()
 
 

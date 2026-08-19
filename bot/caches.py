@@ -1,4 +1,7 @@
-class AdminStatement:
+from enum import Enum
+
+
+class AdminStatement(Enum):
     GET_GROUPS = """
         SELECT DISTINCT g.id, g.name
         FROM groups g
@@ -21,7 +24,7 @@ class AdminStatement:
     """
 
 
-class UserStatement:
+class UserStatement(Enum):
     GET_GROUPS = "SELECT * FROM groups g ORDER BY g.name"
     GET_STUDENTS = "SELECT s.id, s.name FROM students s WHERE group_id = $1 ORDER BY s.name"
     GET_TESTS = "SELECT * FROM tests t ORDER BY t.name"

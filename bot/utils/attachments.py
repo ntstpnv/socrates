@@ -1,32 +1,34 @@
+import io
 from typing import Iterable
 
+from PIL import Image, ImageDraw, ImageFont
 from maxapi.filters.callback_payload import CallbackPayload
-from maxapi.types import Attachment, CallbackButton
+from maxapi.types import Attachment, CallbackButton, InputMediaBuffer
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from sqlalchemy import Row
 
 
 def _create(buttons: list[CallbackButton], sizes: int) -> list[Attachment]:
-    attachments = InlineKeyboardBuilder()
-    attachments.add(*buttons)
-    attachments.adjust(sizes)
+    attachment = InlineKeyboardBuilder()
+    attachment.add(*buttons)
+    attachment.adjust(sizes)
 
-    return [attachments.as_markup()]
+    return [attachment.as_markup()]
 
 
 class Payload(CallbackPayload):
     step: int
-    id: int | None
-    name: str | None
-    item: str | None
+    id: int = 0
+    name: str = ""
+    item: str = ""
 
 
 def _pack_from_row(step: int, row: Row) -> str:
-    return Payload(step=step, id=row.id, name=row.name, item=None).pack()
+    return Payload(step=step, id=row.id, name=row.name).pack()
 
 
 def _pack_from_item(step: int, item: str) -> str:
-    return Payload(step=step, id=None, name=None, item=item).pack()
+    return Payload(step=step, item=item).pack()
 
 
 def _from_row(step: int, row: Row) -> CallbackButton:

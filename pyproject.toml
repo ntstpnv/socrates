@@ -5,7 +5,8 @@ description = "Add your description here"
 requires-python = ">=3.14"
 dependencies = [
     "asyncpg>=0.31.0",
-    "maxapi>=1.2.1",
+    "maxapi>=1.2.2",
+    "pillow>=12.3.0",
     "sqlalchemy>=2.0.52",
 ]
 

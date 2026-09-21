@@ -2,6 +2,7 @@ from asyncio import Lock
 from logging import INFO, basicConfig, getLogger
 from os import getenv
 
+from aiolimiter import AsyncLimiter
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from bot.caches.paths import Paths
@@ -36,3 +37,5 @@ basicConfig(
 )
 
 logger = getLogger("bot")
+
+limiter = AsyncLimiter(30, 1)

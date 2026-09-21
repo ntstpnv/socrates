@@ -1,4 +1,4 @@
-from asyncio import Lock
+from asyncio import Lock, Semaphore
 from ssl import create_default_context
 from time import time_ns
 from uuid import uuid4
@@ -18,6 +18,7 @@ class GigaChat:
     _timeout = ClientTimeout(total=30, connect=10, sock_read=10)
 
     _LOCK = Lock()
+    _SEMAPHORE = Semaphore(1)
 
     _access_token: str | None = None
     _expires_at: int | None = None
@@ -67,50 +68,51 @@ class GigaChat:
 
     @classmethod
     async def ask(cls, user: User, answers: list[Row]) -> str:
-        try:
-            access_token = await cls._get_access_token()
+        async with cls._SEMAPHORE:
+            try:
+                access_token = await cls._get_access_token()
 
-            session = await cls._ensure_session()
+                session = await cls._ensure_session()
 
-            async with session.post(
-                "https://api.giga.chat/v2/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "Authorization": f"Bearer {access_token}",
-                },
-                json={
-                    "model": "GigaChat-2",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": [
-                                {
-                                    "text": UserText.PROMPT,
-                                },
-                            ],
-                        },
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "text": f"{answers}",
-                                },
-                            ],
-                        },
-                    ],
-                    "model_options": {
-                        "temperature": 0.1,
-                        "top_p": 0.9,
-                        "max_tokens": 800,
+                async with session.post(
+                    "https://api.giga.chat/v2/chat/completions",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "Authorization": f"Bearer {access_token}",
                     },
-                },
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
+                    json={
+                        "model": "GigaChat-2",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": [
+                                    {
+                                        "text": UserText.PROMPT,
+                                    },
+                                ],
+                            },
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "text": f"{answers}",
+                                    },
+                                ],
+                            },
+                        ],
+                        "model_options": {
+                            "temperature": 0.1,
+                            "top_p": 0.9,
+                            "max_tokens": 800,
+                        },
+                    },
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
 
-            return data["messages"][0]["content"][0]["text"]
+                return data["messages"][0]["content"][0]["text"]
 
-        except (ClientError, KeyError, TypeError) as error:
-            logger.info("%s:%s | %s:%s", user.id, user.full_name, user.step, error)
-            return "Не удалось сформировать рекомендации"
+            except (ClientError, KeyError, TypeError) as error:
+                logger.info("%s:%s | %s:%s", user.id, user.full_name, user.step, error)
+                return "Не удалось сформировать рекомендации"

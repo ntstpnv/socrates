@@ -8,7 +8,7 @@ from random import choice
 
 from maxapi import Bot, Dispatcher
 from maxapi.context import MemoryContext, State, StatesGroup
-from maxapi.enums import ChatType, ParseMode
+from maxapi.enums import ChatType, TextFormat
 from maxapi.filters.command import Command, CommandStart
 from maxapi.types import InputMediaBuffer, MessageCallback, MessageCreated
 
@@ -24,10 +24,10 @@ from bot.messages.buttons import Payload
 from bot.messages.images import ImageFactory
 from bot.messages.texts import TextFactory
 from bot.middlewares import User, callback_lock
-from bot.settings import ADMINS, LOCKS, TOKEN, logger
+from bot.settings import ADMINS, LOCKS, TOKEN, limiter, logger
 
 
-bot = Bot(TOKEN, format=ParseMode.HTML, auto_requests=False)
+bot = Bot(TOKEN, format=TextFormat.HTML, auto_requests=False)
 dp = Dispatcher()
 
 
@@ -62,7 +62,8 @@ async def admin_selects_group(event: MessageCreated, context: MemoryContext) -> 
     groups = await get_rows(AdminStatement.GET_GROUPS)
     attachments = AttachmentFactory.from_rows(1, groups)
 
-    message = await event.message.answer(AdminText.SELECT_GROUP, attachments)
+    async with limiter:
+        message = await event.message.answer(AdminText.SELECT_GROUP, attachments)
 
     if message is None or message.message.body is None:
         return
@@ -80,7 +81,8 @@ async def admin_selects_test(event: MessageCallback, context: MemoryContext, use
     tests = await get_rows(AdminStatement.GET_TESTS, user.payload.id)
     attachments = AttachmentFactory.from_rows(user.next_step, tests)
 
-    await event.edit(AdminText.SELECT_TEST, attachments)
+    async with limiter:
+        await event.edit(AdminText.SELECT_TEST, attachments)
 
     await context.set_state(AdminState.ADMIN3)
 
@@ -94,7 +96,8 @@ async def admin_confirms_selection(event: MessageCallback, context: MemoryContex
 
     attachments = AttachmentFactory.for_confirmation(user.next_step)
 
-    await event.edit(text, attachments)
+    async with limiter:
+        await event.edit(text, attachments)
 
     await context.set_state(AdminState.ADMIN4)
 
@@ -103,7 +106,8 @@ async def admin_confirms_selection(event: MessageCallback, context: MemoryContex
 @callback_lock
 async def admin_gets_results(event: MessageCallback, context: MemoryContext, user: User) -> None:
     if user.payload.id:
-        await event.edit(CommonText.STOP, [])
+        async with limiter:
+            await event.edit(CommonText.STOP, [])
         await clear(user.id, user.full_name, user.step, context)
         return
 
@@ -121,9 +125,11 @@ async def admin_gets_results(event: MessageCallback, context: MemoryContext, use
     text = "\n".join(texts)
     attachments = [InputMediaBuffer(text.encode("utf-8-sig"), "results.txt")]
 
-    await event.delete()
+    async with limiter:
+        await event.delete()
 
-    await event.send(CommonText.PLACEHOLDER, attachments)
+    async with limiter:
+        await event.send(CommonText.PLACEHOLDER, attachments)
 
     await clear(user.id, user.full_name, user.step, context)
 
@@ -136,7 +142,8 @@ async def user_selects_group(event: MessageCreated, context: MemoryContext) -> N
     groups = await get_rows(UserStatement.GET_GROUPS)
     attachments = AttachmentFactory.from_rows(1, groups)
 
-    message = await event.message.answer(UserText.SELECT_GROUP, attachments)
+    async with limiter:
+        message = await event.message.answer(UserText.SELECT_GROUP, attachments)
 
     if message is None or message.message.body is None:
         return
@@ -156,7 +163,7 @@ async def user_selects_student(event: MessageCallback, context: MemoryContext, u
 
     attachments = AttachmentFactory.from_rows(user.next_step, students)
 
-    async with user.timer("edit"):
+    async with limiter, user.timer("edit"):
         await event.edit(UserText.SELECT_STUDENT, attachments)
 
     await context.set_state(UserState.USER3)
@@ -172,7 +179,7 @@ async def user_selects_test(event: MessageCallback, context: MemoryContext, user
 
     attachments = AttachmentFactory.from_rows(user.next_step, tests)
 
-    async with user.timer("edit"):
+    async with limiter, user.timer("edit"):
         await event.edit(UserText.SELECT_TEST, attachments)
 
     await context.set_state(UserState.USER4)
@@ -187,7 +194,7 @@ async def user_confirms_selection(event: MessageCallback, context: MemoryContext
 
     attachments = AttachmentFactory.for_confirmation(user.next_step)
 
-    async with user.timer("edit"):
+    async with limiter, user.timer("edit"):
         await event.edit(text, attachments)
 
     await context.set_state(UserState.USER5)
@@ -197,7 +204,8 @@ async def user_confirms_selection(event: MessageCallback, context: MemoryContext
 @callback_lock
 async def user_gets_first_question(event: MessageCallback, context: MemoryContext, user: User) -> None:
     if user.payload.id:
-        await event.edit(CommonText.STOP, [])
+        async with limiter, user.timer("edit"):
+            await event.edit(CommonText.STOP, [])
         await clear(user.id, user.full_name, user.step, context)
         return
 
@@ -235,7 +243,7 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
     async with user.timer("for_task"):
         attachments = await AttachmentFactory.for_task(user.next_step, text)
 
-    async with user.timer("edit"):
+    async with limiter, user.timer("edit"):
         await event.edit(CommonText.PLACEHOLDER, attachments)
 
     await context.set_state(UserState.USER6)
@@ -244,7 +252,7 @@ async def user_gets_first_question(event: MessageCallback, context: MemoryContex
 @dp.message_callback(UserState.USER6, Payload.filter())
 @callback_lock
 async def user_gets_next_question(event: MessageCallback, context: MemoryContext, user: User) -> None:
-    async with user.timer("edit1"):
+    async with limiter, user.timer("edit1"):
         await event.edit(CommonText.PROCESSING, [])
 
     user.data["answers"].append(user.data["options"].popleft()[user.payload.id])
@@ -282,7 +290,7 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
             feedback,
         )
 
-        async with user.timer("edit2"):
+        async with limiter, user.timer("edit2"):
             await event.edit(text, [])
 
         await clear(user.id, user.full_name, user.step, context)
@@ -299,7 +307,7 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
     async with user.timer("for_task"):
         attachments = await AttachmentFactory.for_task(user.next_step, text)
 
-    async with user.timer("edit2"):
+    async with limiter, user.timer("edit2"):
         await event.edit(CommonText.PLACEHOLDER, attachments)
 
 
@@ -314,7 +322,8 @@ async def stop(event: MessageCreated, context: MemoryContext) -> None:
     data = await context.get_data()
 
     if message_id := data.get("message_id", ""):
-        await bot.edit_message(message_id, CommonText.STOP, [])
+        async with limiter:
+            await bot.edit_message(message_id, CommonText.STOP, [])
 
     await clear(user_id, full_name, data.get("step", 1), context)
 

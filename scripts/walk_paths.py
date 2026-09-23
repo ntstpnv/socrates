@@ -31,3 +31,10 @@ if __name__ == "__main__":
         file.write("\n".join(tree))
         file.write("\n\n")
         file.write("\n".join(files))
+
+    walk_paths(Paths.MAXAPI)
+
+    with open("all_in_one_maxapi.txt", "w", encoding="utf-8") as file:
+        file.write("\n".join(tree))
+        file.write("\n\n")
+        file.write("\n".join(files))

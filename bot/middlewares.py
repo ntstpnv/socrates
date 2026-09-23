@@ -6,6 +6,7 @@ from time import perf_counter_ns
 from maxapi.context import MemoryContext
 from maxapi.types import MessageCallback
 
+from bot.limiters import Injection
 from bot.messages.buttons import Payload
 from bot.settings import LOCKS, logger
 
@@ -35,7 +36,7 @@ class User:
 
     @property
     def metrics(self) -> str:
-        return ", ".join(f"{name}={value}" for name, value in self._metrics.items())
+        return " ".join(f"{name}={value}" for name, value in self._metrics.items())
 
     @asynccontextmanager
     async def timer(self, name: str) -> AsyncIterator[None]:
@@ -47,13 +48,16 @@ class User:
 
     @asynccontextmanager
     async def transactor(self, context: MemoryContext) -> AsyncIterator[None]:
-        await context.update_data(step=self.next_step)
+        Injection.set(self.id, self.full_name, self.step)
         try:
+            await context.update_data(step=self.next_step)
             yield
-            logger.info("%s:%s | %s:%s", self.id, self.full_name, self.step, self.metrics)
+            logger.info("%s %s | %s | %s", self.id, self.full_name, self.step, self.metrics)
         except Exception:
             await context.update_data(step=self.step)
             raise
+        finally:
+            Injection.reset()
 
 
 def callback_lock(handler: Output) -> Input:
@@ -64,7 +68,7 @@ def callback_lock(handler: Output) -> Input:
             user.data = await context.get_data()
 
             if user.step != user.data.get("step", 1):
-                logger.info("%s:%s | %s:debounce", user.id, user.full_name, user.step)
+                logger.info("%s %s | %s | debounce", user.id, user.full_name, user.step)
                 return None
 
             async with user.transactor(context):

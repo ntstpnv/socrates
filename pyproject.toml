@@ -1,6 +1,6 @@
 [project]
 name = "socrates"
-version = "0.5.1"
+version = "0.5.2"
 description = "Add your description here"
 requires-python = ">=3.14"
 dependencies = [
@@ -10,6 +10,7 @@ dependencies = [
     "maxapi>=1.2.2",
     "pillow>=12.3.0",
     "sqlalchemy>=2.0.54",
+    "yarl>=1.25.1",
 ]
 
 [tool.ruff]

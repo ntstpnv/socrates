@@ -2,6 +2,7 @@ from asyncio import run
 from collections import deque
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
+from html import escape
 from multiprocessing import get_context
 from os import cpu_count
 from random import choice
@@ -78,10 +79,13 @@ async def admin_selects_group(event: MessageCreated, context: MemoryContext) -> 
 async def admin_selects_test(event: MessageCallback, context: MemoryContext, user: User) -> None:
     await context.update_data(group_id=user.payload.id, group=user.payload.value)
 
-    tests = await get_rows(AdminStatement.GET_TESTS, user.payload.id)
+    async with user.timer("get_rows"):
+        tests = await get_rows(AdminStatement.GET_TESTS, user.payload.id)
+
     attachments = AttachmentFactory.from_rows(user.next_step, tests)
 
-    await event.edit(AdminText.SELECT_TEST, attachments)
+    async with user.timer("edit"):
+        await event.edit(AdminText.SELECT_TEST, attachments)
 
     await context.set_state(AdminState.ADMIN3)
 
@@ -95,7 +99,8 @@ async def admin_confirms_selection(event: MessageCallback, context: MemoryContex
 
     attachments = AttachmentFactory.for_confirmation(user.next_step)
 
-    await event.edit(text, attachments)
+    async with user.timer("edit"):
+        await event.edit(text, attachments)
 
     await context.set_state(AdminState.ADMIN4)
 
@@ -104,11 +109,17 @@ async def admin_confirms_selection(event: MessageCallback, context: MemoryContex
 @callback_lock
 async def admin_gets_results(event: MessageCallback, context: MemoryContext, user: User) -> None:
     if user.payload.id:
-        await event.edit(CommonText.STOP, [])
+        async with user.timer("edit"):
+            await event.edit(CommonText.STOP, [])
         await clear(user.id, user.full_name, user.step, context)
         return
 
-    results = await get_rows(AdminStatement.GET_RESULTS, user.data["group_id"], user.data["test_id"])
+    async with user.timer("get_rows"):
+        results = await get_rows(
+            AdminStatement.GET_RESULTS,
+            user.data["group_id"],
+            user.data["test_id"],
+        )
 
     texts = [f"Группа: {user.data['group']}", f"Тест: {user.data['test']}\n"]
     for r in results:
@@ -122,9 +133,11 @@ async def admin_gets_results(event: MessageCallback, context: MemoryContext, use
     text = "\n".join(texts)
     attachments = [InputMediaBuffer(text.encode("utf-8-sig"), "results.txt")]
 
-    await event.delete()
+    async with user.timer("delete"):
+        await event.delete()
 
-    await event.send(CommonText.PLACEHOLDER, attachments)
+    async with user.timer("send"):
+        await event.send(CommonText.PLACEHOLDER, attachments)
 
     await clear(user.id, user.full_name, user.step, context)
 
@@ -280,7 +293,7 @@ async def user_gets_next_question(event: MessageCallback, context: MemoryContext
             user.data["test"],
             finished_at.strftime("%H:%M %d.%m.%Y"),
             points,
-            feedback,
+            escape(feedback),
         )
 
         async with user.timer("edit2"):

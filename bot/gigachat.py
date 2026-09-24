@@ -3,34 +3,33 @@ from ssl import create_default_context
 from time import time_ns
 from uuid import uuid4
 
-from aiohttp import ClientError, ClientSession, ClientTimeout, TCPConnector
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy import Row
 
 from bot.caches.paths import Paths
-from bot.caches.texts import UserText
+from bot.caches.texts import GigaChatText
 from bot.middlewares import User
 from bot.settings import AUTHORIZATION_KEY, logger
 
 
 class GigaChat:
-    _session = None
-    _ssl = create_default_context(cafile=Paths.CERTIFICATE)
-    _timeout = ClientTimeout(total=30, connect=10, sock_read=10)
-
-    _LOCK = Lock()
     _SEMAPHORE = Semaphore(1)
+    _LOCK = Lock()
+
+    _session = None
+    _SSL = create_default_context(cafile=Paths.CERTIFICATE)
+    _TIMEOUT = ClientTimeout(total=30, connect=10, sock_read=10)
 
     _access_token: str | None = None
     _expires_at: int | None = None
 
     @classmethod
-    async def _ensure_session(cls) -> ClientSession:
+    async def _refresh_session(cls) -> None:
         if not cls._session or cls._session.closed:
             cls._session = ClientSession(
-                connector=TCPConnector(ssl=cls._ssl),
-                timeout=cls._timeout,
+                connector=TCPConnector(ssl=cls._SSL),
+                timeout=cls._TIMEOUT,
             )
-        return cls._session
 
     @classmethod
     async def close(cls) -> None:
@@ -44,9 +43,9 @@ class GigaChat:
             if cls._access_token and time_ns() < cls._expires_at:
                 return cls._access_token
 
-            session = await cls._ensure_session()
+            await cls._refresh_session()
 
-            async with session.post(
+            async with cls._session.post(
                 "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -72,9 +71,9 @@ class GigaChat:
             try:
                 access_token = await cls._get_access_token()
 
-                session = await cls._ensure_session()
+                await cls._refresh_session()
 
-                async with session.post(
+                async with cls._session.post(
                     "https://api.giga.chat/v2/chat/completions",
                     headers={
                         "Content-Type": "application/json",
@@ -88,7 +87,7 @@ class GigaChat:
                                 "role": "system",
                                 "content": [
                                     {
-                                        "text": UserText.PROMPT,
+                                        "text": GigaChatText.PROMPT,
                                     },
                                 ],
                             },
@@ -111,8 +110,19 @@ class GigaChat:
                     response.raise_for_status()
                     data = await response.json()
 
+                logger.info(
+                    "%s %s | %s | reason=%s input=%s cached=%s output=%s",
+                    user.id,
+                    user.full_name,
+                    user.step,
+                    data["finish_reason"],
+                    data["usage"]["input_tokens"],
+                    data["usage"]["input_tokens_details"]["cached_tokens"],
+                    data["usage"]["output_tokens"],
+                )
+
                 return data["messages"][0]["content"][0]["text"]
 
-            except (ClientError, KeyError, TypeError) as error:
-                logger.info("%s:%s | %s:%s", user.id, user.full_name, user.step, error)
+            except Exception as error:
+                logger.info("%s %s | %s | %s", user.id, user.full_name, user.step, error)
                 return "Не удалось сформировать рекомендации"

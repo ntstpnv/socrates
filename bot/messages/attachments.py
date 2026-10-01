@@ -18,7 +18,7 @@ class AttachmentFactory:
     @staticmethod
     @lru_cache(maxsize=None)
     def for_confirmation(step: int) -> list[AttachmentButton]:
-        return [ButtonFactory.from_items(step, ("Все верно", "Выбрать заново"), 1)]
+        return [ButtonFactory.from_items(step, ("Продолжить", "Выбрать заново"), 1)]
 
     @classmethod
     async def for_task(cls, step: int, text: str) -> list[AttachmentButton | InputMediaBuffer]:

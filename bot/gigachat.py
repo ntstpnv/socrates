@@ -8,7 +8,9 @@ from sqlalchemy import Row
 
 from bot.caches.paths import Paths
 from bot.caches.texts import GigaChatText
-from bot.middlewares import User
+from bot.contexts import Context
+
+# from bot.middlewares import
 from bot.settings import AUTHORIZATION_KEY, logger
 
 
@@ -66,7 +68,7 @@ class GigaChat:
             return data["access_token"]
 
     @classmethod
-    async def ask(cls, user: User, answers: list[Row]) -> str:
+    async def ask(cls, context: Context, answers: list[Row]) -> str:
         async with cls._SEMAPHORE:
             try:
                 access_token = await cls._get_access_token()
@@ -111,10 +113,9 @@ class GigaChat:
                     data = await response.json()
 
                 logger.info(
-                    "%s %s | %s | reason=%s input=%s cached=%s output=%s",
-                    user.id,
-                    user.full_name,
-                    user.step,
+                    "%s | %s | reason=%s input=%s cached=%s output=%s",
+                    context.user,
+                    context.state,
                     data["finish_reason"],
                     data["usage"]["input_tokens"],
                     data["usage"]["input_tokens_details"]["cached_tokens"],
@@ -124,5 +125,5 @@ class GigaChat:
                 return data["messages"][0]["content"][0]["text"]
 
             except Exception as error:
-                logger.info("%s %s | %s | %s", user.id, user.full_name, user.step, error)
+                logger.info("%s | %s | %s", context.user, context.state, error)
                 return "Не удалось сформировать рекомендации"

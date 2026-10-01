@@ -1,4 +1,3 @@
-from collections import defaultdict
 from contextlib import nullcontext
 from contextvars import ContextVar
 from time import perf_counter_ns
@@ -12,25 +11,25 @@ from bot.settings import logger
 
 
 class Injection:
-    _user_id: ContextVar[int | None] = ContextVar("_user_id", default=None)
-    _full_name: ContextVar[str | None] = ContextVar("_full_name", default=None)
-    _step: ContextVar[int | None] = ContextVar("_step", default=None)
+    _limiter = ContextVar[AsyncLimiter | None]("_limiter", default=None)
+    _user = ContextVar[str | None]("_user", default=None)
+    _state = ContextVar[str | None]("_state", default=None)
 
     @classmethod
-    def set(cls, user_id: int, full_name: str, step: int) -> None:
-        cls._user_id.set(user_id)
-        cls._full_name.set(full_name)
-        cls._step.set(step)
+    def set(cls, limiter: AsyncLimiter | None, user: str | None, state: str | None) -> None:
+        cls._limiter.set(limiter)
+        cls._user.set(user)
+        cls._state.set(state)
 
     @classmethod
-    def get(cls) -> tuple[int | None, str | None, int | None]:
-        return cls._user_id.get(), cls._full_name.get(), cls._step.get()
+    def get(cls) -> tuple[AsyncLimiter | None, str | None, str | None]:
+        return cls._limiter.get(), cls._user.get(), cls._state.get()
 
     @classmethod
     def reset(cls):
-        cls._user_id.set(None)
-        cls._full_name.set(None)
-        cls._step.set(None)
+        cls._limiter.set(None)
+        cls._user.set(None)
+        cls._state.set(None)
 
 
 _request = ClientSession._request
@@ -38,48 +37,38 @@ _request = ClientSession._request
 
 class Limiter:
     total = AsyncLimiter(30, 1)
-    users = defaultdict(lambda: AsyncLimiter(2, 1))
-
-    @classmethod
-    def user(cls, user_id: int | None):
-        return cls.users[user_id] if user_id else nullcontext()
 
     @staticmethod
-    async def request(
-        self,
-        method: str,
-        str_or_url: StrOrURL,
-        **kwargs,
-    ) -> ClientResponse:
-        t1 = t2 = perf_counter_ns()
+    async def request(self, method: str, str_or_url: StrOrURL, **kwargs) -> ClientResponse:
+        t1 = t2 = t3 = perf_counter_ns()
         status = None
+        limiter, user, state = Injection.get()
 
-        user_id, full_name, step = Injection.get()
+        user_limiter = limiter or nullcontext()
 
         try:
-            async with Limiter.user(user_id), Limiter.total:
+            async with user_limiter:
                 t2 = perf_counter_ns()
-                response = await _request(
-                    self,
-                    method,
-                    str_or_url,
-                    **kwargs,
-                )
-                status = response.status
-                return response
+                async with Limiter.total:
+                    t3 = perf_counter_ns()
+                    response = await _request(self, method, str_or_url, **kwargs)
+                    status = response.status
+                    return response
         finally:
-            t3 = perf_counter_ns()
+            t4 = perf_counter_ns()
             logger.info(
-                "%s %s | %s | %s %s wait=%s request=%s status=%s",
-                user_id,
-                full_name,
-                step,
+                "%s | %s | %s %s wait=%s wait=%s request=%s total=%s status=%s",
+                user,
+                state,
                 method,
                 URL(str_or_url).path,
                 (t2 - t1) // 1_000_000,
                 (t3 - t2) // 1_000_000,
+                (t4 - t3) // 1_000_000,
+                (t4 - t1) // 1_000_000,
                 status,
             )
 
-
-ClientSession._request = Limiter.request
+    @classmethod
+    def activate(cls) -> None:
+        ClientSession._request = cls.request

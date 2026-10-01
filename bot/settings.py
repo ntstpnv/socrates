@@ -1,4 +1,3 @@
-from asyncio import Lock
 from logging import INFO, basicConfig, getLogger
 from os import getenv
 
@@ -32,8 +31,6 @@ TOKEN = read_secret("bot_token")
 ADMINS = {int(user_id) for user_id in read_secret("bot_admins").split(",")}
 
 AUTHORIZATION_KEY = read_secret("gigachat_token")
-
-LOCKS: dict[int, Lock] = {}
 
 basicConfig(
     format="%(asctime)s | %(message)s",

@@ -7,7 +7,6 @@ from aiolimiter import AsyncLimiter
 from maxapi.context import MemoryContext
 
 from bot.settings import ADMINS
-from bot.states import Admin, User
 
 
 class AnyContext(Protocol):
@@ -39,7 +38,7 @@ class Field:
 class Context(MemoryContext):
     full_name = Field()
 
-    _branch = Field()
+    branch = Field()
     step = Field(default=0)
 
     message_id = Field()
@@ -72,16 +71,13 @@ class Context(MemoryContext):
         return f"{self.user_id} {self.full_name}"
 
     @property
-    def state(self) -> str:
-        return f"{self._branch.__name__}{self.step}"
-
-    def set_branch(self, command: str) -> None:
-        self._branch = User if command == "/start" else Admin
+    def state(self) -> str | None:
+        return f"{self.branch.__name__}{self.step}" if self.step else None
 
     def next_state(self) -> None:
         self.step += 1
-        self._state = self._branch.get_state(self.step)
+        self._state = self.branch.get_state(self.step)
 
     def rollback(self) -> None:
         self.step -= 1
-        self._state = self._branch.get_state(self.step)
+        self._state = self.branch.get_state(self.step)

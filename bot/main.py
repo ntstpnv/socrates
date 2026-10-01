@@ -24,7 +24,7 @@ from bot.messages.attachments import AttachmentFactory
 from bot.messages.buttons import Payload
 from bot.messages.images import ImageFactory
 from bot.messages.texts import TextFactory
-from bot.middlewares import begin_lock, callback_lock
+from bot.middlewares import branch_lock, callback_lock
 from bot.settings import TOKEN, logger
 from bot.states import Admin, User
 
@@ -35,7 +35,7 @@ dp = Dispatcher(storage=Context)
 
 
 @dp.message_created(None, Command("admin"))
-@begin_lock
+@branch_lock(Admin)
 async def admin_selects_group(event: MessageCreated, context: Context) -> None:
     if not context.is_admin:
         logger.info("%s | is_admin=%s", context.user, context.is_admin)
@@ -106,7 +106,7 @@ async def admin_gets_results(event: MessageCallback, context: Context, payload: 
 
 
 @dp.message_created(None, CommandStart())
-@begin_lock
+@branch_lock(User)
 async def user_selects_group(event: MessageCreated, context: Context) -> None:
     groups = await get_rows(UserStatement.GET_GROUPS)
     attachments = AttachmentFactory.from_rows(context.step, groups)

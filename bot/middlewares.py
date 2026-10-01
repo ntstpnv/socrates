@@ -8,10 +8,14 @@ from bot.contexts import Context
 from bot.limiters import Injection
 from bot.messages.buttons import Payload
 from bot.settings import logger
+from bot.states import Admin, User
 
 
-type MessageCallbackType = Callable[[MessageCallback, Context, Payload], Awaitable[None]]
-type MessageCreatedType = Callable[[MessageCreated, Context], Awaitable[None]]
+type Branch = type[Admin] | type[User]
+type MessageCreatedDecorator = Callable[[MessageCreatedWrapper], MessageCreatedWrapper]
+type MessageCreatedWrapper = Callable[[MessageCreated, Context], Awaitable[None]]
+
+type MessageCallbackWrapper = Callable[[MessageCallback, Context, Payload], Awaitable[None]]
 
 
 @asynccontextmanager
@@ -27,40 +31,35 @@ async def transactor(context: Context) -> AsyncGenerator[None, None]:
         Injection.reset()
 
 
-def begin_lock(handler: MessageCreatedType) -> MessageCreatedType:
-    async def wrapper(event: MessageCreated, context: Context) -> None:
-        if event.message.sender is None:
-            return None
-        elif event.message.recipient.chat_type != ChatType.DIALOG:
-            return None
-        elif event.message.body is None:
-            return None
-        elif event.message.body.text is None:
-            return None
-        elif context.user_id is None:
-            return None
-        elif context.full_name is None:
-            context.full_name = event.message.sender.full_name
-
-        async with context.lock:
-            if context.step:
+def branch_lock(branch: Branch) -> MessageCreatedDecorator:
+    def decorator(handler: MessageCreatedWrapper) -> MessageCreatedWrapper:
+        async def wrapper(event: MessageCreated, context: Context) -> None:
+            if event.message.sender is None:
                 return None
+            if event.message.sender.is_bot:
+                return None
+            if event.message.recipient.chat_type != ChatType.DIALOG:
+                return None
+            if context.full_name is None:
+                context.full_name = event.message.sender.full_name
 
-            context.set_branch(event.message.body.text)
+            async with context.lock:
+                if context.step:
+                    return None
 
-            async with transactor(context):
-                return await handler(event, context)
+                context.branch = branch
 
-    return wrapper
+                async with transactor(context):
+                    return await handler(event, context)
+
+        return wrapper
+
+    return decorator
 
 
-def callback_lock(handler: MessageCallbackType) -> MessageCallbackType:
+def callback_lock(handler: MessageCallbackWrapper) -> MessageCallbackWrapper:
     async def wrapper(event: MessageCallback, context: Context, payload: Payload) -> None:
         if event.message is None:
-            return None
-        elif event.message.sender is None:
-            return None
-        elif event.message.recipient.chat_type != ChatType.DIALOG:
             return None
 
         async with context.lock:

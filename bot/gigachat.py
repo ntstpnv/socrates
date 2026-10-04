@@ -9,8 +9,6 @@ from sqlalchemy import Row
 from bot.caches.paths import Paths
 from bot.caches.texts import GigaChatText
 from bot.contexts import Context
-
-# from bot.middlewares import
 from bot.settings import AUTHORIZATION_KEY, logger
 
 
@@ -68,7 +66,7 @@ class GigaChat:
             return data["access_token"]
 
     @classmethod
-    async def ask(cls, context: Context, answers: list[Row]) -> str:
+    async def ask(cls, context: Context, pairs: list[Row]) -> str:
         async with cls._SEMAPHORE:
             try:
                 access_token = await cls._get_access_token()
@@ -97,7 +95,7 @@ class GigaChat:
                                 "role": "user",
                                 "content": [
                                     {
-                                        "text": f"{answers}",
+                                        "text": f"{pairs}",
                                     },
                                 ],
                             },
@@ -105,7 +103,7 @@ class GigaChat:
                         "model_options": {
                             "temperature": 0.1,
                             "top_p": 0.9,
-                            "max_tokens": 800,
+                            "max_tokens": 1000,
                         },
                     },
                 ) as response:
@@ -113,9 +111,8 @@ class GigaChat:
                     data = await response.json()
 
                 logger.info(
-                    "%s | %s | reason=%s input=%s cached=%s output=%s",
+                    "%s | reason=%s input=%s cached=%s output=%s",
                     context.user,
-                    context.state,
                     data["finish_reason"],
                     data["usage"]["input_tokens"],
                     data["usage"]["input_tokens_details"]["cached_tokens"],
@@ -125,5 +122,5 @@ class GigaChat:
                 return data["messages"][0]["content"][0]["text"]
 
             except Exception as error:
-                logger.info("%s | %s | %s", context.user, context.state, error)
+                logger.info("%s\n%s", context.user, error)
                 return "Не удалось сформировать рекомендации"

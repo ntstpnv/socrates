@@ -32,10 +32,6 @@ ADMINS = {int(user_id) for user_id in read_secret("bot_admins").split(",")}
 
 AUTHORIZATION_KEY = read_secret("gigachat_token")
 
-basicConfig(
-    format="%(asctime)s | %(message)s",
-    datefmt="%H:%M:%S %d.%m",
-    level=INFO,
-)
+basicConfig(format="%(asctime)s | %(message)s", datefmt="%H:%M:%S %d.%m", level=INFO)
 
 logger = getLogger()

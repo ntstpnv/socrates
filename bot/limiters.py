@@ -36,20 +36,36 @@ _request = ClientSession._request
 
 
 class Limiter:
+    _2RPS = {
+        "POST /messages",
+        "PUT /messages",
+        "POST /answers",
+    }
+
+    NOT_IN = {
+        "POST /uploadImage",
+        "POST /api/upload.do",
+        "POST /api/v2/oauth",
+        "POST /v2/chat/completions",
+    }
+
     total = AsyncLimiter(30, 1)
 
     @staticmethod
     async def request(self, method: str, str_or_url: StrOrURL, **kwargs) -> ClientResponse:
         t1 = t2 = t3 = perf_counter_ns()
+        route = f"{method} {URL(str_or_url).path}"
         status = None
+
         limiter, user, state = Injection.get()
 
-        user_limiter = limiter or nullcontext()
+        user_limiter = limiter if limiter is not None and route in Limiter._2RPS else nullcontext()
+        total_limiter = nullcontext() if route in Limiter.NOT_IN else Limiter.total
 
         try:
             async with user_limiter:
                 t2 = perf_counter_ns()
-                async with Limiter.total:
+                async with total_limiter:
                     t3 = perf_counter_ns()
                     response = await _request(self, method, str_or_url, **kwargs)
                     status = response.status
@@ -57,11 +73,10 @@ class Limiter:
         finally:
             t4 = perf_counter_ns()
             logger.info(
-                "%s | %s | %s %s wait=%s wait=%s request=%s total=%s status=%s",
+                "%-30.30s | %-6s | %-25s | %-4s | %-4s | %-5s | %-5s | %s",
                 user,
                 state,
-                method,
-                URL(str_or_url).path,
+                route,
                 (t2 - t1) // 1_000_000,
                 (t3 - t2) // 1_000_000,
                 (t4 - t3) // 1_000_000,
@@ -69,6 +84,6 @@ class Limiter:
                 status,
             )
 
-    @classmethod
-    def activate(cls) -> None:
-        ClientSession._request = cls.request
+    @staticmethod
+    def activate() -> None:
+        ClientSession._request = Limiter.request

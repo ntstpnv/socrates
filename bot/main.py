@@ -30,7 +30,7 @@ from bot.states import Admin, User
 
 
 Limiter.activate()
-bot = Bot(TOKEN, format=TextFormat.HTML, auto_requests=False)
+bot = Bot(TOKEN, format=TextFormat.HTML, auto_requests=False, after_input_media_delay=1.0)
 dp = Dispatcher(storage=Context)
 
 
@@ -45,12 +45,7 @@ async def admin_selects_group(event: MessageCreated, context: Context) -> None:
     attachments = AttachmentFactory.from_rows(context.step, groups)
 
     message = await event.message.answer(AdminText.SELECT_GROUP, attachments)
-
-    if message is None or message.message.body is None:
-        await clear(context)
-        return
-
-    context.message_id = message.message.body.mid
+    context.message_id = message and message.message.body and message.message.body.mid
 
 
 @dp.message_callback(Admin.State1, Payload.filter())
@@ -84,6 +79,8 @@ async def admin_gets_results(event: MessageCallback, context: Context, payload: 
         await clear(context)
         return
 
+    await event.delete()
+
     results = await get_rows(AdminStatement.GET_RESULTS, context.group_id, context.test_id)
 
     texts = [f"Группа: {context.group}", f"Тест: {context.test}\n"]
@@ -98,9 +95,7 @@ async def admin_gets_results(event: MessageCallback, context: Context, payload: 
     text = "\n".join(texts)
     attachments = [InputMediaBuffer(text.encode("utf-8-sig"), "results.txt")]
 
-    await event.delete()
-
-    await event.send(CommonText.PLACEHOLDER, attachments)
+    await event.send(context.group, attachments)
 
     await clear(context)
 
@@ -112,12 +107,7 @@ async def user_selects_group(event: MessageCreated, context: Context) -> None:
     attachments = AttachmentFactory.from_rows(context.step, groups)
 
     message = await event.message.answer(UserText.SELECT_GROUP, attachments)
-
-    if message is None or message.message.body is None:
-        await clear(context)
-        return
-
-    context.message_id = message.message.body.mid
+    context.message_id = message and message.message.body and message.message.body.mid
 
 
 @dp.message_callback(User.State1, Payload.filter())
@@ -211,7 +201,7 @@ async def user_gets_next_question(event: MessageCallback, context: Context, payl
 
         await add_result(
             event.callback.user.user_id,
-            context.full_name,
+            event.callback.user.full_name,
             context.group_id,
             context.student_id,
             context.test_id,
@@ -246,6 +236,7 @@ async def user_gets_next_question(event: MessageCallback, context: Context, payl
 async def stop(_, context: Context) -> None:
     if context.message_id is not None:
         await bot.edit_message(context.message_id, CommonText.STOP, [])
+
     await clear(context)
 
 

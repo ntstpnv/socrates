@@ -36,6 +36,6 @@ class ButtonFactory:
         return cls._create([cls._to_button(step, row.id, row.name) for row in rows], sizes)
 
     @classmethod
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=32)
     def from_items(cls, step: int, items: tuple[str, ...], sizes: int) -> AttachmentButton:
         return cls._create([cls._to_button(step, i, item) for i, item in enumerate(items)], sizes)

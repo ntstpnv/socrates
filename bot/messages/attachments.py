@@ -16,7 +16,7 @@ class AttachmentFactory:
         return [ButtonFactory.from_rows(step, rows, 2)]
 
     @staticmethod
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=2)
     def for_confirmation(step: int) -> list[AttachmentButton]:
         return [ButtonFactory.from_items(step, ("Продолжить", "Выбрать заново"), 1)]
 

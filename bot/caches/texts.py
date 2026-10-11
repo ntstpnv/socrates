@@ -1,18 +1,9 @@
-def set_font(cls):
-    for attribute, text in vars(cls).items():
-        if not attribute.startswith("_"):
-            setattr(cls, attribute, f"<code>{text}</code>")
-    return cls
-
-
-@set_font
 class AdminText:
     SELECT_GROUP = "Шаг 1 из 3:\n\nВыберите группу"
     SELECT_TEST = "Шаг 2 из 3:\n\nВыберите тест"
     CONFIRM = "Шаг 3 из 3:\nПодтвердите правильность выбора\n\nГруппа: {}\nТест: {}"
 
 
-@set_font
 class UserText:
     SELECT_GROUP = "Шаг 1 из 4:\n\nВыберите вашу группу"
     SELECT_STUDENT = "Шаг 2 из 4:\n\nВыберите себя из списка"
@@ -21,7 +12,6 @@ class UserText:
     RESULT = "Группа: {}\nСтудент: {}\nТест: {}\nДата: {}\nРезультат: {} из 30\n\n{}"
 
 
-@set_font
 class CommonText:
     PLACEHOLDER = "_"
     PROCESSING = "Обработка"

@@ -12,7 +12,7 @@ async def add_groups(new_groups: dict[str, list[str]]) -> None:
             result = await session.execute(stmt)
             group = result.scalar_one_or_none()
 
-            if not group:
+            if group is None:
                 group = Group(name=new_group)
                 session.add(group)
 
@@ -21,7 +21,7 @@ async def add_groups(new_groups: dict[str, list[str]]) -> None:
                 result = await session.execute(stmt)
                 student = result.scalar_one_or_none()
 
-                if not student:
+                if student is None:
                     student = Student(name=new_student, group=group)
                     session.add(student)
 

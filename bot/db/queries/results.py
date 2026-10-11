@@ -13,7 +13,6 @@ async def add_result(
     finished_at: datetime,
     answers: str,
     points: int,
-    feedback: str,
 ) -> None:
     async with ASYNC_ENGINE.begin() as async_connection:
         await async_connection.exec_driver_sql(
@@ -27,6 +26,5 @@ async def add_result(
                 finished_at,
                 answers,
                 points,
-                feedback,
             ),
         )

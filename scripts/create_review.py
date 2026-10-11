@@ -3,12 +3,12 @@ from pathlib import Path
 from bot.caches.paths import Paths
 
 
-IGNORE = {".git", ".idea", ".ruff_cache", ".venv", "__pycache__", "backups", "scripts"}
+IGNORE = {".git", ".idea", ".ruff_cache", ".venv", "__pycache__", "backups"}
 
 tree, files = [], []
 
 
-def walk_paths(path: Path, prefix: str = "") -> None:
+def walk(path: Path, prefix: str = "") -> None:
     paths = sorted(
         (p for p in path.iterdir() if p.name not in IGNORE),
         key=lambda p: (p.is_file(), p.name.lower()),
@@ -18,16 +18,15 @@ def walk_paths(path: Path, prefix: str = "") -> None:
         tree.append(f"{prefix}{'└── ' if i == len(paths) else '├── '}{p.name}")
 
         if p.is_dir():
-            walk_paths(p, prefix + ("    " if i == len(paths) else "│   "))
-        elif p.suffix in {".py", ".yaml", ".conf"} and p.stem != "__init__":
+            walk(p, prefix + ("    " if i == len(paths) else "│   "))
+        elif p.suffix in {".py", ".ini", ".yaml", ".conf", ".toml"} or p.stem == "Dockerfile":
             with open(p, encoding="utf-8") as f:
-                files.append(f"# {'=' * 77}\n# {p.name}\n\n{f.read()}")
+                files.append(f"# {'=' * 77}\n# {p.relative_to(root).as_posix()}\n\n{f.read()}")
 
 
 if __name__ == "__main__":
-    walk_paths(Paths.ROOT)
+    root = Paths.ROOT
+    walk(root)
 
     with open("all_in_one.txt", "w", encoding="utf-8") as file:
-        file.write("\n".join(tree))
-        file.write("\n\n")
-        file.write("\n".join(files))
+        file.write("\n".join([*tree, "", *files]))

@@ -41,10 +41,9 @@ class UserStatement:
             test_id,
             finished_at,
             answers,
-            points,
-            feedback
+            points
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     """
     GET_SUMMARY = """
         WITH answers AS (

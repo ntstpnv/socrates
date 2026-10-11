@@ -17,7 +17,7 @@ async def backup_tests() -> None:
     Paths.TESTS.mkdir(parents=True, exist_ok=True)
 
     async with ASYNC_SESSION() as session:
-        stmt = select(Test).options(selectinload(Test.questions)).order_by(Test.name)
+        stmt = select(Test).options(selectinload(Test.questions)).order_by(Test.id)
         tests = await session.scalars(stmt)
 
         for test in tests:
@@ -32,7 +32,7 @@ async def backup_tests() -> None:
                 for task in sorted(test.questions, key=lambda t: t.id)
             }
 
-            await to_thread(_create, f"{test.name}.json", data)
+            await to_thread(_create, f"{test.id:02}_{test.name}.json", data)
 
 
 if __name__ == "__main__":

@@ -1,13 +1,11 @@
 from asyncio import run
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from html import escape
 from multiprocessing import get_context
 from os import cpu_count
 from random import choice
 
 from maxapi import Bot, Dispatcher
-from maxapi.enums import TextFormat
 from maxapi.filters.command import Command, CommandStart
 from maxapi.types import InputMediaBuffer, MessageCallback, MessageCreated
 
@@ -18,6 +16,7 @@ from bot.caches.texts import AdminText, CommonText, UserText
 from bot.contexts import Context
 from bot.db.queries.results import add_result
 from bot.db.queries.rows import get_rows
+from bot.feedbacks import Feedback
 from bot.gigachat import GigaChat
 from bot.limiters import Limiter
 from bot.messages.attachments import AttachmentFactory
@@ -30,7 +29,7 @@ from bot.states import Admin, User
 
 
 Limiter.activate()
-bot = Bot(TOKEN, format=TextFormat.HTML, auto_requests=False, after_input_media_delay=1.0)
+bot = Bot(TOKEN, auto_requests=False, after_input_media_delay=1.0)
 dp = Dispatcher(storage=Context)
 
 
@@ -208,7 +207,6 @@ async def user_gets_next_question(event: MessageCallback, context: Context, payl
             finished_at,
             " ".join(answers),
             points,
-            feedback,
         )
 
         text = UserText.RESULT.format(
@@ -217,10 +215,12 @@ async def user_gets_next_question(event: MessageCallback, context: Context, payl
             context.test,
             finished_at.strftime("%H:%M %d.%m.%Y"),
             points,
-            escape(feedback),
+            feedback,
         )
 
         await event.edit(text, [])
+
+        await Feedback.save(text)
 
         await clear(context)
         return
